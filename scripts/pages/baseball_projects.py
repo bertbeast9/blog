@@ -260,7 +260,7 @@ def get_state_action_transitions(start_date, end_date):
         for game in game_generator(start_date, end_date):
             print(game.iloc[0,:].game_date)
             # map states
-            
+
             game["game_state"] = game.apply(lambda x: f"({x.balls},{x.strikes})"  ,axis = 1)
             game["events"] = game["events"].apply(lambda x: x if pd.isna(x) else event_2_state_dict[x])
             for idx, row in game.iterrows():
@@ -668,24 +668,31 @@ st.divider()
 split_dict = {"LHP vs LHH":"LL","LHP vs RHH":"LR","RHP vs LHH":"RL","RHP vs RHH":"RR"}
 split = split_dict[split]
 
-FF_perc = st.slider("FF % usage",min_value = 0, max_value = 100, value = 0)
-SI_perc = st.slider("SI % usage",min_value = 0, max_value = 100, value = 0)
-FC_perc = st.slider("FC % usage",min_value = 0, max_value = 100, value = 0)
-CH_perc = st.slider("CH % usage",min_value = 0, max_value = 100, value = 0)
-FS_perc = st.slider("FS % usage",min_value = 0, max_value = 100, value = 0)
-FO_perc = st.slider("FO % usage",min_value = 0, max_value = 100, value = 0)
-SC_perc = st.slider("SC % usage",min_value = 0, max_value = 100, value = 0)
-CU_perc = st.slider("CU % usage",min_value = 0, max_value = 100, value = 0)
-KC_perc = st.slider("KC % usage",min_value = 0, max_value = 100, value = 0)
-CS_perc = st.slider("CS % usage",min_value = 0, max_value = 100, value = 0)
-SL_perc = st.slider("SL % usage",min_value = 0, max_value = 100, value = 0)
-ST_perc = st.slider("ST % usage",min_value = 0, max_value = 100, value = 0)
-SV_perc = st.slider("SV % usage",min_value = 0, max_value = 100, value = 0)
-KN_perc = st.slider("KN % usage",min_value = 0, max_value = 100, value = 0)
-EP_perc = st.slider("EP % usage",min_value = 0, max_value = 100, value = 0)
-FA_perc = st.slider("FA % usage",min_value = 0, max_value = 100, value = 0)
-IN_perc = st.slider("IN % usage",min_value = 0, max_value = 100, value = 0)
-PO_perc = st.slider("PO % usage",min_value = 0, max_value = 100, value = 0)
+pit_col1,pit_col2,pit_col3,pit_col4,pit_col5 = st.columns([1,1,1,1,1])
+with pit_col1:
+    FF_perc = st.slider("FF % usage",min_value = 0, max_value = 100, value = 0)
+    SI_perc = st.slider("SI % usage",min_value = 0, max_value = 100, value = 0)
+    FC_perc = st.slider("FC % usage",min_value = 0, max_value = 100, value = 0)
+with pit_col2:
+    CH_perc = st.slider("CH % usage",min_value = 0, max_value = 100, value = 0)
+    FS_perc = st.slider("FS % usage",min_value = 0, max_value = 100, value = 0)
+    FO_perc = st.slider("FO % usage",min_value = 0, max_value = 100, value = 0)
+    SC_perc = st.slider("SC % usage",min_value = 0, max_value = 100, value = 0)
+with pit_col3:
+
+    CU_perc = st.slider("CU % usage",min_value = 0, max_value = 100, value = 0)
+    KC_perc = st.slider("KC % usage",min_value = 0, max_value = 100, value = 0)
+    CS_perc = st.slider("CS % usage",min_value = 0, max_value = 100, value = 0)
+with pit_col4:
+    SL_perc = st.slider("SL % usage",min_value = 0, max_value = 100, value = 0)
+    ST_perc = st.slider("ST % usage",min_value = 0, max_value = 100, value = 0)
+    SV_perc = st.slider("SV % usage",min_value = 0, max_value = 100, value = 0)
+with pit_col5:
+    KN_perc = st.slider("KN % usage",min_value = 0, max_value = 100, value = 0)
+    EP_perc = st.slider("EP % usage",min_value = 0, max_value = 100, value = 0)
+    FA_perc = st.slider("FA % usage",min_value = 0, max_value = 100, value = 0)
+    IN_perc = st.slider("IN % usage",min_value = 0, max_value = 100, value = 0)
+    PO_perc = st.slider("PO % usage",min_value = 0, max_value = 100, value = 0)
 pitch_sum = FF_perc + SI_perc + FC_perc + CH_perc + FS_perc + FO_perc + SC_perc + CU_perc + KC_perc + CS_perc + SL_perc + ST_perc + SV_perc + KN_perc + EP_perc + FA_perc + IN_perc + PO_perc 
 pitch_sum_gt_100 = pitch_sum >= 100
 if not pitch_sum_gt_100:
