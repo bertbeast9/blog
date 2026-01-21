@@ -1,11 +1,30 @@
 import streamlit as st
 import numpy as np
+import sys
+sys.path.append("C:/Users/sambe/Python")
+from mlb.py_bet_mlb.simulate.update_models import pitch_solver_main_count_only, visualize_policy
 # functions
-# def simulate_next_pitch_count_only(split,balls,strikes,n_sims,suffix = "unconstrained"):
-#     randnums = np.random.uniform(size = (n_sims,))
-#     opt_policy_dict = 
+# @st.cache_data
+def simulate_next_pitch_count_only(split,balls,strikes,n_sims,pitch_constraints,location_constraints):
+    # solve with constraints
+    # print("hey")
+    count = f"({balls},{strikes})"
+    opt_policy = pitch_solver_main_count_only(pitch_constraints,location_constraints)
+    fig = visualize_policy(opt_policy,split,count)
+    st.pyplot(fig)
+    # print(opt_policy[split][count])
+    # opt_controls = [x[0] for x in opt_policy[split][count]]
+    # opt_probs = np.array([x[1] for x in opt_policy[split][count]])
+    # cumsum_probs = np.cumsum(opt_probs)
+    # rand_nums = 100*np.random.uniform(size = (n_sims,))
+    # samples = []
+    # for i in range(n_sims):
+    #     samples.append(opt_controls[np.argwhere(cumsum_probs >= rand_nums[i])[0][0]])
+    # print(cumsum_probs)
+    # print(rand_nums)
+    # print(samples)
 
-#     return
+    return 
 # functions
 
 st.header("Baseball Projects",divider=True)
@@ -138,25 +157,31 @@ with col3:
 with col4:
     n_strikes = st.number_input("Number of strikes",min_value=0, max_value=2)
 st.divider()
+split_dict = {"LHP vs LHH":"LL","LHP vs RHH":"LR","RHP vs LHH":"RL","RHP vs RHH":"RR"}
+split = split_dict[split]
 
-FF_perc = st.slider("FF % usage",min_value = 0, max_value = 100, value = 100)
-SI_perc = st.slider("SI % usage",min_value = 0, max_value = 100, value = 100)
-FC_perc = st.slider("FC % usage",min_value = 0, max_value = 100, value = 100)
-CH_perc = st.slider("CH % usage",min_value = 0, max_value = 100, value = 100)
-FS_perc = st.slider("FS % usage",min_value = 0, max_value = 100, value = 100)
-FO_perc = st.slider("FO % usage",min_value = 0, max_value = 100, value = 100)
-SC_perc = st.slider("SC % usage",min_value = 0, max_value = 100, value = 100)
-CU_perc = st.slider("CU % usage",min_value = 0, max_value = 100, value = 100)
-KC_perc = st.slider("KC % usage",min_value = 0, max_value = 100, value = 100)
-CS_perc = st.slider("CS % usage",min_value = 0, max_value = 100, value = 100)
-SL_perc = st.slider("SL % usage",min_value = 0, max_value = 100, value = 100)
-ST_perc = st.slider("ST % usage",min_value = 0, max_value = 100, value = 100)
-SV_perc = st.slider("SV % usage",min_value = 0, max_value = 100, value = 100)
-KN_perc = st.slider("KN % usage",min_value = 0, max_value = 100, value = 100)
-EP_perc = st.slider("EP % usage",min_value = 0, max_value = 100, value = 100)
-FA_perc = st.slider("FA % usage",min_value = 0, max_value = 100, value = 100)
-IN_perc = st.slider("IN % usage",min_value = 0, max_value = 100, value = 100)
-PO_perc = st.slider("PO % usage",min_value = 0, max_value = 100, value = 100)
+FF_perc = st.slider("FF % usage",min_value = 0, max_value = 100, value = 0)
+SI_perc = st.slider("SI % usage",min_value = 0, max_value = 100, value = 0)
+FC_perc = st.slider("FC % usage",min_value = 0, max_value = 100, value = 0)
+CH_perc = st.slider("CH % usage",min_value = 0, max_value = 100, value = 0)
+FS_perc = st.slider("FS % usage",min_value = 0, max_value = 100, value = 0)
+FO_perc = st.slider("FO % usage",min_value = 0, max_value = 100, value = 0)
+SC_perc = st.slider("SC % usage",min_value = 0, max_value = 100, value = 0)
+CU_perc = st.slider("CU % usage",min_value = 0, max_value = 100, value = 0)
+KC_perc = st.slider("KC % usage",min_value = 0, max_value = 100, value = 0)
+CS_perc = st.slider("CS % usage",min_value = 0, max_value = 100, value = 0)
+SL_perc = st.slider("SL % usage",min_value = 0, max_value = 100, value = 0)
+ST_perc = st.slider("ST % usage",min_value = 0, max_value = 100, value = 0)
+SV_perc = st.slider("SV % usage",min_value = 0, max_value = 100, value = 0)
+KN_perc = st.slider("KN % usage",min_value = 0, max_value = 100, value = 0)
+EP_perc = st.slider("EP % usage",min_value = 0, max_value = 100, value = 0)
+FA_perc = st.slider("FA % usage",min_value = 0, max_value = 100, value = 0)
+IN_perc = st.slider("IN % usage",min_value = 0, max_value = 100, value = 0)
+PO_perc = st.slider("PO % usage",min_value = 0, max_value = 100, value = 0)
+pitch_sum = FF_perc + SI_perc + FC_perc + CH_perc + FS_perc + FO_perc + SC_perc + CU_perc + KC_perc + CS_perc + SL_perc + ST_perc + SV_perc + KN_perc + EP_perc + FA_perc + IN_perc + PO_perc 
+pitch_sum_gt_100 = pitch_sum >= 100
+if not pitch_sum_gt_100:
+    st.warning(f"The sum of the pitch percentages needs to be greater than or equal to 100%")
 
 st.divider()
 col1, col2 = st.columns([1,1])
@@ -184,6 +209,19 @@ with st.container():
     loc14_perc = col13.slider("loc 14 % usage",min_value = 0, max_value = 100, value = 100)
 
 
+# double check that percentages are >= 100%
+loc_sum = loc1_perc + loc2_perc + loc3_perc + loc4_perc + loc5_perc + loc6_perc + loc7_perc + loc8_perc + loc9_perc + loc11_perc + loc12_perc + loc13_perc + loc14_perc 
+loc_sum_gt_100 = loc_sum >= 100
+if not loc_sum_gt_100:
+    st.warning(f"The sum of the location percentages needs to be greater than or equal to 100%")
+
+# pitch_constraints = {"FF":}
+pitch_percentage_ub_total = {"FF":FF_perc/100,"FS":FS_perc/100,"FA":FA_perc/100,"FO":FO_perc/100,"CU":CU_perc/100,"SL":SL_perc/100,"FC":FC_perc/100,"SI":SI_perc/100,"ST":ST_perc/100,"CH":CH_perc/100,"KN":KN_perc/100,"SV":SV_perc/100,"KC":KC_perc/100,"EP":EP_perc/100,"PO":PO_perc/100}
+pitch_percentage_ub_state = {"FF":FF_perc/100,"FS":FS_perc/100,"FA":FA_perc/100,"FO":FO_perc/100,"CU":CU_perc/100,"SL":SL_perc/100,"FC":FC_perc/100,"SI":SI_perc/100,"ST":ST_perc/100,"CH":CH_perc/100,"KN":KN_perc/100,"SV":SV_perc/100,"KC":KC_perc/100,"EP":EP_perc/100,"PO":PO_perc/100}
+location_percentage_ub_total = {"1":loc1_perc/100,"2":loc2_perc/100,"3":loc3_perc/100,"4":loc4_perc/100,"5":loc5_perc/100,"6":loc6_perc/100,"7":loc7_perc/100,"8":loc8_perc/100,"9":loc9_perc/100,"11":loc11_perc/100,"12":loc12_perc/100,"13":loc13_perc/100,"14":loc14_perc/100}
+location_percentage_ub_state = {"1":loc1_perc/100,"2":loc2_perc/100,"3":loc3_perc/100,"4":loc4_perc/100,"5":loc5_perc/100,"6":loc6_perc/100,"7":loc7_perc/100,"8":loc8_perc/100,"9":loc9_perc/100,"11":loc11_perc/100,"12":loc12_perc/100,"13":loc13_perc/100,"14":loc14_perc/100}
+
+
 if st.button("Simulate Pitch"):
     st.write(f"Simulating next pitch {n_pitch_sims} time(s)")
-    # simulate_next_pitch_count_only(split,n_balls,n_strikes,n_pitch_sims)
+    simulate_next_pitch_count_only(split,n_balls,n_strikes,n_pitch_sims,pitch_constraints=(pitch_percentage_ub_total,pitch_percentage_ub_state),location_constraints=(location_percentage_ub_total,location_percentage_ub_state))
