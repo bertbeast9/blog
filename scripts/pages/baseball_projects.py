@@ -253,7 +253,7 @@ def get_state_action_transitions(start_date, end_date):
     
     event_2_state_dict = {"strikeout":"out","home_run":"home_run","foul_popout":"out","field_out":"out","single":"single","double":"double","triple":"triple","walk":"walk","hit_by_pitch":"hit_by_pitch","force_out":"out","grounded_into_double_play":"out","sac_bunt":"out","sac_fly":"out","field_error":"out","double_play":"out","triple_play":"out","fielders_choice":"out","triple_play":"out","sac_fly_double_play":"out","fielders_choice_out":"out","sac_bunt_double_play":"out","ejection":"out","truncated_pa":"out","catcher_interf":"out","strikeout_double_play":"out","intent_walk":"walk","game_advisory":"out"}
     event_2_bases_dict = {"out": -1, "walk": 0, "hit_by_pitch": 0, "single": 0, "double": 0, "triple": 0, "home_run": 0}
-    filename = f"C:/Users/sambe/Python/mlb/data/mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_state_trans_probs.pkl"
+    filename = f"./mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_state_trans_probs.pkl"
     if os.path.isfile(filename):
         (P, G, all_states, all_controls, all_locations, all_pitches, all_splits) = pickle.load(open(filename,"rb"))
     else:
