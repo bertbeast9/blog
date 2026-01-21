@@ -342,8 +342,8 @@ def pitch_solver_main_count_only(pitch_constraints,location_constraints):
     # # # # visualize_policy(opt_policy,start_date,end_date,suffix = "")
     print(sys.path)
     folder = "./mdls/count_only_opt_policies"
-    filename = os.path.join(folder,"CNN_VM_CMP.jpg")
-    st.image(filename)
+    # filename = os.path.join(folder,"CNN_VM_CMP.jpg")
+    # st.image(filename)
     found_filename = ""
     i = 0
     st.write(sys.path)
