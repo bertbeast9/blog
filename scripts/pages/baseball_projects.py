@@ -5,7 +5,7 @@ st.sidebar.markdown("# Baseball Projects")
 st.sidebar.subheader("Pitch Solver (Count Only)")
 st.sidebar.subheader("Pitch Solver (Expanded)")
 st.subheader("Pitch Solver (Count Only)")
-st.text("Okay, let's start with the problem at hand. A begin decision before each " \
+st.write("Okay, let's start with the problem at hand. A begin decision before each " \
 "pitch is what pitch to throw. We aim to model this as a Markov Decision Process (MDP) " \
 "with the states being the state of the game. As a starting point, we are only going " \
 "to consider the count as the state of the at-bat. Future work will expand the state-space " \
