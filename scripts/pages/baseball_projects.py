@@ -1,17 +1,520 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle, Circle, Polygon
+import matplotlib
 import sys
-sys.path.append("C:/Users/sambe/Python")
-from mlb.py_bet_mlb.simulate.update_models import pitch_solver_main_count_only#, visualize_policy
+import json
+import datetime
+import os
+import pickle
+from copy import copy
+from scipy.optimize import linprog
+
+# variables
+dtype_dict = {"pitch_type":str,"game_date":str,"release_speed":"Float64",
+                "release_pos_x":"Float64","release_pos_y":"Float64","release_pos_z":"Float64",
+                "player_name":str,"batter":"Int64","pitcher":"Int64","events":str,"description":str,
+                "spin_dir":"Float64","spin_rate_deprecated":"Float64","break_angle_deprecated":"Float64",
+                "break_length_deprecated":"Float64","zone":"Int64","des":str,
+                "game_type":str,"stand":str,"p_throws":str,"home_team":str,"away_team":str,
+                "type":str,"hit_location":"Int64","bb_type":str,"balls":"Int64","strikes":"Int64",
+                "game_year":"Int64","pfx_x":"Float64","pfx_z":"Float64","plate_x":"Float64","plate_z":"Float64",
+                "on_3b":"Int64","on_2b":"Int64","on_1b":"Int64", "outs_when_up":"Int64",
+                "inning":"Int64","inning_topbot":str,"hc_x":"Float64","hc_y":"Float64",
+                "tfs_deprecated":"Int64","tfs_zulu_deprecated":"Int64",
+                "umpire":"Int64","sv_id":"str","vx0":"Float64","vy0":"Float64","vz0":"Float64",
+                "ax":"Float64","ay":"Float64","az":"Float64","sz_top":"Float64","sz_bot":"Float64",
+                "hit_distance_sc":"Float64","launch_speed":"Float64","launch_angle":"Float64",
+                "effective_speed":"Float64","release_spin_rate":"Float64","release_extension":"Float64",
+                "game_pk":"Int64","pitcher":"Int64","fielder_2":"Int64","fielder_3":"Int64","fielder_4":"Int64",
+                "fielder_5":"Int64","fielder_6":"Int64","fielder_7":"Int64","fielder_8":"Int64",
+                "fielder_9":"Int64","estimated_ba_using_speedangle":"Float64",
+                "estimated_woba_using_speedangle":"Float64","woba_value":"Float64","woba_denom":"Float64",
+                "iso_value":"Float64","launch_speed_angle":"Float64","at_bat_number":"Int64",#"bapip_value":"Float64",
+                "pitch_number":"Int64","pitch_name":str,"home_score":"Int64","away_score":"Int64","bat_score":"Int64",
+                "fld_score":"Int64","post_home_score":"Int64","post_away_score":"Int64","post_bat_score":"Int64","post_fld_score":"Int64",
+                "if_fielding_alignment":str,"of_fielding_alignment":str,"spin_axis":"Float64","delta_home_win_exp":"Float64",
+                "delta_run_exp":"Float64","bat_speed":"Float64","swing_length":"Float64","estimated_slg_using_speedangle":"Float64",
+                "delta_pitcher_run_exp":"Float64","hyper_speed":"Float64","home_score_diff":"Int64","bat_score_diff":"Int64",
+                "home_win_exp":"Float64","bat_win_exp":"Float64","age_pit_legacy":"Int64","age_bat_legacy":"Int64","age_pit":"Int64","age_bat":"Int64",
+                "n_thruorder_pitcher":"Int64","n_priorpa_thisgame_player_at_bat":"Int64","pitcher_days_since_prev_game":"Int64",
+                "batter_days_since_prev_game":"Int64","pitcher_days_until_next_game":"Int64","batter_days_until_next_game":"Int64",
+                "api_break_z_with_gravity":"Float64","api_break_x_arm":"Float64","api_break_x_batter_in":"Float64","arm_angle":"Float64",
+                "attack_angle":"Float64","attack_direction":"Float64","swing_path_tilt":"Float64","intercept_ball_minus_batter_pos_x_inches":"Float64",
+                "intercept_ball_minus_batter_pos_y_inches":"Float64"}
+# variables
+
 # functions
+def add_strikezone(ax, bot_sz = 1.54, top_sz = 3.35):
+    width = 17/12
+    box_height = (1/3)*(top_sz-bot_sz)
+    box_width = (1/3)*(width)
+    zone7 = ax.add_patch(Rectangle((-width/2+0*box_width,bot_sz+0*box_height),box_width,box_height, ec="k", fc = "None"))
+    zone8 = ax.add_patch(Rectangle((-width/2+1*box_width,bot_sz+0*box_height),box_width,box_height, ec="k", fc = "None"))
+    zone9 = ax.add_patch(Rectangle((-width/2+2*box_width,bot_sz+0*box_height),box_width,box_height, ec="k", fc = "None"))
+    zone4 = ax.add_patch(Rectangle((-width/2+0*box_width,bot_sz+1*box_height),box_width,box_height, ec="k", fc = "None"))
+    zone5 = ax.add_patch(Rectangle((-width/2+1*box_width,bot_sz+1*box_height),box_width,box_height, ec="k", fc = "None"))
+    zone6 = ax.add_patch(Rectangle((-width/2+2*box_width,bot_sz+1*box_height),box_width,box_height, ec="k", fc = "None"))
+    zone1 = ax.add_patch(Rectangle((-width/2+0*box_width,bot_sz+2*box_height),box_width,box_height, ec="k", fc = "None"))
+    zone2 = ax.add_patch(Rectangle((-width/2+1*box_width,bot_sz+2*box_height),box_width,box_height, ec="k", fc = "None"))
+    zone3 = ax.add_patch(Rectangle((-width/2+2*box_width,bot_sz+2*box_height),box_width,box_height, ec="k", fc = "None"))
+    zone13 = ax.add_patch(Polygon([(-width/2+0*box_width,bot_sz+1.5*box_height), (-width/2+0*box_width,bot_sz+0*box_height),(-width/2+1.5*box_width,bot_sz+0*box_height),(-width/2+1.5*box_width,bot_sz+-1*box_height),(-width/2+-1*box_width,bot_sz+-1*box_height),(-width/2+-1*box_width,bot_sz+1.5*box_height)], ec="k", fc = "None"))
+    zone14 = ax.add_patch(Polygon([(-width/2+3*box_width,bot_sz+1.5*box_height),(-width/2+3*box_width,bot_sz+0*box_height),(-width/2+1.5*box_width,bot_sz+0*box_height),(-width/2+1.5*box_width,bot_sz+-1*box_height),(-width/2+4*box_width,bot_sz+-1*box_height),(-width/2+4*box_width,bot_sz+1.5*box_height)], ec="k", fc = "None"))
+    zone11 = ax.add_patch(Polygon([(-width/2+0*box_width,bot_sz+1.5*box_height),(-width/2+0*box_width,bot_sz+3*box_height),(-width/2+1.5*box_width,bot_sz+3*box_height),(-width/2+1.5*box_width,bot_sz+4*box_height),(-width/2+-1*box_width,bot_sz+4*box_height),(-width/2+-1*box_width,bot_sz+1.5*box_height)], ec="k", fc = "None"))
+    zone12 = ax.add_patch(Polygon([(-width/2+3*box_width,bot_sz+1.5*box_height),(-width/2+3*box_width,bot_sz+3*box_height),(-width/2+1.5*box_width,bot_sz+3*box_height),(-width/2+1.5*box_width,bot_sz+4*box_height),(-width/2+4*box_width,bot_sz+4*box_height),(-width/2+4*box_width,bot_sz+1.5*box_height)], ec="k", fc = "None"))
+    strikezone = ax.add_patch(Polygon([(-width/2+0*box_width,bot_sz+0*box_height), (-width/2+3*box_width,bot_sz+0*box_height),(-width/2+3*box_width,bot_sz+3*box_height),(-width/2+0*box_width,bot_sz+3*box_height)], ec="r", fc = "None"))
+    
+    ax.set_xlim([-1.5*width,1.5*width])
+    ax.set_ylim([0,5])
+    zone = {1:zone1,2:zone2,3:zone3,4:zone4,5:zone5,6:zone6,7:zone7,8:zone8,9:zone9,11:zone11,12:zone12,13:zone13,14:zone14,"strikezone":strikezone}
+    return ax, zone
+
+def add_batter(ax,stand, off_plate = (17/12),batter_width = 1,batter_height = 6):
+    if stand == "L":
+        ax.add_patch(Rectangle([off_plate,0],batter_width, batter_height,ec = "g",fc = "g"))
+    elif stand == "R":
+        ax.add_patch(Rectangle([-off_plate-batter_width,0],batter_width, batter_height,ec = "g",fc = "g"))
+    return ax
+def add_pitcher(ax,p_throws):
+    if p_throws == "L":
+        ax.add_patch(Rectangle([0,4],0.5, 0.1,ec = "g",fc = "g"))
+    elif p_throws == "R":
+        ax.add_patch(Rectangle([-0.5,4],0.5, 0.1,ec = "g",fc = "g"))
+    return ax
+def visualize_policy(policy,split,state):
+    global perc_ax, fig
+    # for split in ["LL","LR","RL","RR"]:
+    #     for state in policy[split].keys():
+    fig = plt.figure()
+    font = {
+    'size'   : 6}
+
+    matplotlib.rc('font', **font)
+    # sz_ax = fig.add_subplot(121)
+    # perc_ax = fig.add_subplot(122)
+    # perc_ax.set_visible(False)
+    sz_ax = fig.add_subplot(111)
+    # perc_ax = fig.add_subplot(122)
+    # perc_ax.set_visible(False)
+    fig.canvas.flush_events()
+    sz_ax, zone = add_strikezone(sz_ax)
+    sz_ax = add_pitcher(sz_ax,split[0])
+    sz_ax = add_batter(sz_ax,split[1])
+    for zone_loc in list(range(1,10)) + list(range(11,15)):
+        zone_usage = 0.0
+        zone_pitches = []
+        for item in policy[split][state]:
+            control = item[0]
+            percentage =  item[1]
+            pitch, location = control.split(" ")
+            if zone_loc == int(location):
+                zone_usage += percentage
+                zone_pitches.append([pitch,percentage])
+        zone_usage = round(zone_usage,2)
+        if zone_loc < 10:
+            rx, ry = zone[int(zone_loc)].get_xy()
+            cx = rx + zone[int(zone_loc)].get_width()/2.0
+            cy = ry + zone[int(zone_loc)].get_height()/2.0
+            string = f"Total: {zone_usage}%"
+            for item in zone_pitches:
+                string += f"\n {item[0]} {item[1]}%"
+            sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
+        elif zone_loc == 11 or zone_loc == 12:
+            xys = zone[int(zone_loc)].get_xy()
+            cx = xys[0,0] + 0.0
+            cy = xys[0,1] + 2*zone[1].get_height()
+            string = f"Total: {zone_usage}%"
+            for item in zone_pitches:
+                string += f"\n {item[0]} {item[1]}%"
+            sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
+        elif zone_loc == 13 or zone_loc == 14:
+            xys = zone[int(zone_loc)].get_xy()
+            cx = xys[0,0] + 0.0
+            cy = xys[0,1] - 2*zone[1].get_height()
+            string = f"Total: {zone_usage}%"
+            for item in zone_pitches:
+                string += f"\n {item[0]} {item[1]}%"
+            sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
+        
+
+    def on_click(event,zone):
+        global perc_ax, fig, split, state
+        if event.button == 1:
+            [zone[curr_zone].set_fc("none") for curr_zone in list(range(1,10)) + list(range(11,15))]
+            for curr_zone in list(range(1,10)) + list(range(11,15)):
+                if zone[curr_zone].contains_point([event.x,event.y]):
+                    global perc_ax, fig
+                    zone[curr_zone].set_fc("r")
+                    # perc_ax.clear()
+                    # perc_ax.set_visible(True)
+                    zone_pitches = []
+                    zone_percs = []
+                    for item in policy[split][state]:
+                        if int(item[0].split(" ")[1]) == curr_zone:
+                            zone_pitches.append(item[0].split(" ")[0])
+                            zone_percs.append(item[1])
+                    # perc_ax.pie(zone_percs,labels = zone_pitches, colors = [pitch_color_dict[x] for x in zone_pitches],autopct='%1.1f%%')
+                    # perc_ax.legend(loc = "best")
+                    fig.canvas.draw()
+                    fig.canvas.flush_events()
+
+    cid = fig.canvas.mpl_connect("button_press_event", lambda event: on_click(event, zone))
+
+    fig.suptitle(f"Split: {split} || State: {state}")
+    # manager = plt.get_current_fig_manager()
+    # manager.full_screen_toggle()
+    # plt.savefig(f"C:/Users/sambe/Python/mlb/figures/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_{split}_{state}_{suffix}.jpg")
+    # plt.close()
+    # plt.show()
+
+    return fig
+
+
+def game_generator(startdate, enddate):
+    # get folders
+    day_folders = [f"C:/Users/sambe/Python/mlb/data/rawdata/games/{x}" for x in os.listdir("C:/Users/sambe/Python/mlb/data/rawdata/games") if os.path.isdir(f"C:/Users/sambe/Python/mlb/data/rawdata/games/{x}")]
+    day_folders = sorted(day_folders)
+    for folder in day_folders:
+        folder_date = datetime.datetime.strptime(folder.split("/")[-1], "%Y-%m-%d")
+        if folder_date < startdate or folder_date > enddate:
+            continue
+        for game_file in [f"{folder}/{x}" for x in os.listdir(folder)]:
+            # print(game_file)
+            df = pd.read_csv(game_file, dtype = dtype_dict)
+            yield df
+    return 
+
+
+def get_state_action_transitions(start_date, end_date):
+    trans_states = [f"({b},{s})" for b in range(4) for s in range(3)]
+    term_states = ["out","walk","hit_by_pitch","single","double","triple","home_run"]
+    all_states = trans_states + term_states
+    card_S = len(all_states)
+    # all_pitches = list(pitch_color_dict.keys())
+    # all_pitches = ["FF","CH","SL"]
+    all_pitches = ["FF","FS","FA","FO","CU","SL","FC","SI","ST","CH","KN","SV","KC","EP","PO"]
+    all_locations = list(range(1,10)) + list(range(11,15))
+    # all_locations = [2,5]
+    all_splits = ["LL","LR","RL","RR"]
+    trans_controls = [f"{pitch} {location}" for pitch in all_pitches for location in all_locations]
+    # term_controls = ["O"]
+    all_controls = trans_controls #+ term_controls
+    card_U = len(all_controls)
+    O = np.zeros([len(all_splits),card_U,card_S,card_S])
+    allowed_trans = []
+    for i in range(card_S):
+        if i >= len(trans_states): # absorbing states
+            O[:,:,i,i] = 1
+        else: # transient states
+            curr_state = all_states[i]
+            for j in range(card_S):
+                next_state = all_states[j]
+                if curr_state == next_state and curr_state[3] == "2": # foul ball with two strikes
+                    O[:,:,i,j] = 1
+                    allowed_trans.append(f"{curr_state} -> {next_state}")
+                elif curr_state != next_state:
+                    if next_state in term_states:
+                        if curr_state[1] == "3":
+                            O[:,:,i,j] = 1
+                            allowed_trans.append(f"{curr_state} -> {next_state}")
+                        elif next_state != "walk":
+                            O[:,:,i,j] = 1
+                            allowed_trans.append(f"{curr_state} -> {next_state}")
+                    else:
+                        if int(next_state[1]) == 1 + int(curr_state[1]) and next_state[3] == curr_state[3]: # ball thrown
+                            O[:,:,i,j] = 1
+                            allowed_trans.append(f"{curr_state} -> {next_state}")
+                        elif int(next_state[3]) == 1 + int(curr_state[3]) and next_state[1] == curr_state[1]: # strike thrown
+                            O[:,:,i,j] = 1
+                            allowed_trans.append(f"{curr_state} -> {next_state}")
+    # print(O)
+    # print(O.shape)
+    # input()
+    G = np.zeros([len(all_splits),card_U,card_S])
+    N = np.ones([len(all_splits),card_U,card_S])
+    for l in range(len(all_splits)):
+        for i in range(card_S):
+            curr_state = all_states[i]
+            if i < len(trans_states):
+                for j in range(card_U):
+                    if all_pitches[j//len(all_locations)] == "FF":
+                        G[l,j,i] = 0.01
+                        N[l,j,i] = 1
+                    else:
+                        G[l,j,i] = 0.01
+                        N[l,j,i] = 1
+                    # G[1,i] = 0.01
+                    # G[2,i] = 0.01
+    # # print(G)
+    # # print(G.shape)
+    # # input()
+    
+    event_2_state_dict = {"strikeout":"out","home_run":"home_run","foul_popout":"out","field_out":"out","single":"single","double":"double","triple":"triple","walk":"walk","hit_by_pitch":"hit_by_pitch","force_out":"out","grounded_into_double_play":"out","sac_bunt":"out","sac_fly":"out","field_error":"out","double_play":"out","triple_play":"out","fielders_choice":"out","triple_play":"out","sac_fly_double_play":"out","fielders_choice_out":"out","sac_bunt_double_play":"out","ejection":"out","truncated_pa":"out","catcher_interf":"out","strikeout_double_play":"out","intent_walk":"walk","game_advisory":"out"}
+    event_2_bases_dict = {"out": -1, "walk": 0, "hit_by_pitch": 0, "single": 0, "double": 0, "triple": 0, "home_run": 0}
+    filename = f"C:/Users/sambe/Python/mlb/data/mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_state_trans_probs.pkl"
+    if os.path.isfile(filename):
+        (P, G, all_states, all_controls, all_locations, all_pitches, all_splits) = pickle.load(open(filename,"rb"))
+    else:
+        for game in game_generator(start_date, end_date):
+            print(game.iloc[0,:].game_date)
+            # map states
+            game["game_state"] = game.apply(lambda x: f"({x.balls},{x.strikes})"  ,axis = 1)
+            game["events"] = game["events"].apply(lambda x: x if pd.isna(x) else event_2_state_dict[x])
+            for idx, row in game.iterrows():
+                curr_state = row.game_state
+                # check if there is a pitch_type defined
+                if not pd.isna(row.pitch_type) and not pd.isna(row.zone):
+                    curr_control = f"{row.pitch_type} {row.zone}"
+                    if pd.isna(row.events) and idx+1 < game.shape[0]:
+                        next_state = game.iloc[idx+1].game_state
+                        if curr_control in all_controls and curr_state in all_states and next_state in all_states:
+                            i = all_controls.index(curr_control)
+                            j = all_states.index(curr_state)
+                            k = all_states.index(next_state)
+                            l = all_splits.index(f"{row.p_throws}{row.stand}")
+                            if O[l,i,j,k] > 0:
+                                O[l,i,j,k] += 1
+
+                            else:
+                                print("not possible")
+                                print(row.events)
+                                print(f"{curr_control} {curr_state}, {next_state}")
+                                print(f"{i}, {j}, {k}")
+                            #     input()
+                    elif not pd.isna(row.events):
+                        next_state = row.events
+                        if curr_control in all_controls and curr_state in all_states and next_state in all_states:
+                            i = all_controls.index(curr_control)
+                            j = all_states.index(curr_state)
+                            k = all_states.index(next_state)
+                            l = all_splits.index(f"{row.p_throws}{row.stand}")
+                            cost = event_2_bases_dict[next_state]  + row.post_bat_score - row.bat_score
+                            if O[l,i,j,k] > 0:
+                                O[l,i,j,k] += 1
+                                G[l,:,k] += cost
+                                N[l,:,k] += 1
+                                # print(f"{curr_state} | {next_state} | {G[l,:,k]}| {cost}")
+                                # input()
+                                
+                            else:
+                                print("not possible")
+                                print(row.events)
+                                print(f"{curr_control} {curr_state}, {next_state}")
+                                print(f"{i}, {j}, {k}")
+                                # input()
+        P = copy(O)
+        for l in range(len(all_splits)):
+            for i in range(len(trans_controls)):
+                for j in range(card_S):
+                    row_sum = np.sum(P[l,i,j,:])
+                    P[l,i,j,:] /= row_sum
+        G = G/N
+        for l in range(len(all_splits)):
+            print(f"{all_splits[l]}")
+            for k in range(card_S):
+                state = all_states[k]
+                if state in term_states:
+                    print(f"{state} | avg. cost: {G[l,0,k]}")
+        # print(G)
+        # input()
+            # for j in range(card_S):
+            #     next_state = all_states[j]
+            #     if next_state in term_states:
+            #         row_sum = 0
+            #         for i in range(card_U):
+            #             row_sum += np.sum(O[l,i,:,j])
+            #         G[l,:,j] /= row_sum
+            #         print(f"{next_state} | cost: {G[l,:,j]}")
+        pickle.dump((P, G, all_states, all_controls, all_locations, all_pitches, all_splits),open(filename,"wb"))
+    
+        
+    return P, G, all_states, all_controls, all_locations, all_pitches, all_splits
+
+
+def pitch_solver_main_count_only(pitch_constraints,location_constraints):
+    start_date = datetime.datetime(2008,3,1)
+    # start_date = datetime.datetime(2025,6,1)
+    # end_date = datetime.datetime(2025,7,1)
+    end_date = datetime.datetime(2025,11,1)
+    # # # # opt_policy = json.load(open(f"C:/Users/sambe/Python/mlb/data/mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_opt_policy.json","r"))
+    # # # # visualize_policy(opt_policy,start_date,end_date,suffix = "")
+    folder = "C:/Users/sambe/Python/mlb/data/mdls/count_only_opt_policies"
+    found_filename = ""
+    i = 0
+    for i,filename in enumerate(os.listdir(folder)):
+        filename = os.path.join(folder,filename)
+        opt_policy = json.load(open(filename,"r"))
+        # print(opt_policy)
+        if opt_policy["constraints"]["pitch_perc_ub_total"] == pitch_constraints[0] and \
+            opt_policy["constraints"]["pitch_perc_ub_state"] == pitch_constraints[1] and \
+            opt_policy["constraints"]["location_perc_ub_total"] == location_constraints[0] and \
+            opt_policy["constraints"]["location_perc_ub_state"] == location_constraints[1]:
+            found_filename = filename
+            break
+    if len(found_filename) < 10:
+        filename = os.path.join(folder, f"{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_opt_policy_{datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}")
+        print(f"creating new constraints file {filename}")
+        # print(f"C:/Users/sambe/Python/mlb/data/mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_opt_policy.json")
+        # input()
+        P, G, all_states, all_controls, all_locations, all_pitches, all_splits = get_state_action_transitions(start_date, end_date)
+        opt_policy = dict()
+        opt_policy["constraints"] = dict()
+        opt_policy["constraints"]["pitch_perc_ub_total"] = pitch_constraints[0]
+        opt_policy["constraints"]["pitch_perc_ub_state"] = pitch_constraints[1]
+        opt_policy["constraints"]["location_perc_ub_total"] = location_constraints[0]
+        opt_policy["constraints"]["location_perc_ub_state"] = location_constraints[1]
+        for l, split in enumerate(all_splits):
+            print(f"Optimal policy for {split[0]}HP vs {split[1]}HH")
+            opt_policy[split] = dict()
+            # print(G)
+            card_S = len(all_states)
+            card_U = len(all_controls)
+            card_vars = len(all_states)*len(all_controls)
+            c = np.append(G[l,:,:].T.reshape(-1,),np.zeros((card_vars,)),axis = 0)
+            var_bounds = [(0,None) for i in range(card_vars*2)]
+            
+            A_eq1 = np.zeros([card_S,card_vars])
+            b_eq1 = np.zeros([card_S])
+            for j in range(card_S):
+                state = all_states[j]
+                add_ind = np.arange(j*card_U,(j+1)*card_U)
+                A_eq1[j,add_ind] += 1
+                for i in range(card_S):
+                    prev_state = all_states[i]
+                    sub_ind = np.arange(i*card_U,(i+1)*card_U)
+                    A_eq1[j,sub_ind] -= P[l,:,i,j]
+            A_eq1 = np.concat([A_eq1,np.zeros([card_S,card_vars])],axis = 1)
+            A_eq2a = np.zeros([card_S,card_vars])
+            for j in range(card_S):
+                state = all_states[j]
+                add_ind = np.arange(j*card_U,(j+1)*card_U)
+                A_eq2a[j,add_ind] += 1
+            A_eq2b = np.zeros([card_S,card_vars])
+            b_eq2 = np.ones(shape = (card_S,))#np.random.uniform(size=(card_S,))
+            b_eq2 /= np.sum(b_eq2)
+            for j in range(card_S):
+                state = all_states[j]
+                add_ind = np.arange(j*card_U,(j+1)*card_U)
+                A_eq2b[j,add_ind] += 1
+                for i in range(card_S):
+                    prev_state = all_states[i]
+                    sub_ind = np.arange(i*card_U,(i+1)*card_U)
+                    A_eq2b[j,sub_ind] -= P[l,:,i,j]
+            A_eq2 = np.concat([A_eq2a,A_eq2b],axis = 1)
+
+
+            # # # # # # # # # # # percent pitch usage
+            A_ub0 = np.zeros([len(all_pitches),card_vars*2])
+            b_ub0 = np.zeros([len(all_pitches)])
+            for i, pitch in enumerate(all_pitches):
+                A_ub0[i,card_vars:-7*card_U] = -pitch_constraints[0][all_pitches[i]]
+                for j in range(i*(len(all_locations)), card_vars-7*card_U, len(all_locations)*len(all_pitches)):
+                    A_ub0[i,j+card_vars:j+card_vars+len(all_locations)] += 1
+
+            A_ub1 = np.zeros([len(all_pitches)*len(all_states),card_vars])
+            b_ub1 = np.zeros([len(all_pitches)*len(all_states)])
+            for i in range(len(all_pitches)*card_S):
+                idx = i // card_S
+                jdx = i % len(all_pitches)
+                A_ub1[i,(i // (len(all_pitches)))*len(all_pitches)*len(all_locations):(i // (len(all_pitches)))*len(all_pitches)*len(all_locations) + len(all_pitches)*len(all_locations)] = -pitch_constraints[1][all_pitches[jdx]]
+                A_ub1[i,i*len(all_locations):(i+1)*len(all_locations)] += 1
+            A_ub1 = np.concat([np.zeros([len(all_pitches)*len(all_states),card_vars]),A_ub1],axis = 1)
+            # # # # # # # # # # # percent location usage
+            A_ub2 = np.zeros([len(all_locations),card_vars*2])
+            b_ub2 = np.zeros([len(all_locations)])
+            for i, location in enumerate(all_locations):
+                A_ub2[i,card_vars:-7*card_U] = -location_constraints[0][f"{location}"]
+                for j in range(i, card_vars-7*card_U, len(all_locations)):
+                    A_ub2[i,j+card_vars] += 1
+
+            A_ub3 = np.zeros([len(all_locations)*len(all_states),card_vars])
+            b_ub3 = np.zeros([len(all_locations)*len(all_states)])
+            for i in range(len(all_locations)*card_S):
+                idx = i // len(all_locations)
+                jdx = i % len(all_locations)
+                add_ind = np.arange(jdx,len(all_pitches)*len(all_locations),len(all_locations)) + idx * card_U
+                sub_ind = np.arange(idx * card_U,(idx+1) * card_U)            
+                A_ub3[i,sub_ind] = -location_constraints[1][f"{all_locations[jdx]}"]
+                A_ub3[i,add_ind] += 1
+            A_ub3 = np.concat([np.zeros([len(all_locations)*len(all_states),card_vars]),A_ub3],axis = 1)
+            
+
+            A_eq = np.concat([A_eq1,A_eq2],axis = 0)
+            b_eq = np.concat([b_eq1,b_eq2],axis = 0)
+            A_ub = np.concat([A_ub0,A_ub1,A_ub2,A_ub3],axis = 0)
+            b_ub = np.concat([b_ub0,b_ub1,b_ub2,b_ub3],axis = 0)
+            res = linprog(c,A_ub = A_ub, b_ub = b_ub,A_eq = A_eq,b_eq = b_eq, bounds = var_bounds)#
+            qs = res.x[:card_vars]
+            rs = res.x[card_vars:]
+            for i in range(card_vars):
+                idx = i % card_U
+                control = all_controls[idx]
+                jdx = i // card_U
+                state = all_states[jdx]
+                if qs[i] > 0 and rs[i] > 0:
+                    print(f"state {state} | control {control} | q: {qs[i]} | r: {rs[i]}")
+                    input()
+            # print(res)
+            # print(res.fun)
+            start_controls = 0
+            end_controls = card_U
+            for i in range(card_vars):
+                control_idx = i % card_U
+                state_idx = i // card_U
+                state_usage = 100*rs[i]/np.sum(rs[start_controls:end_controls])
+                if state_usage > 0 and "(" in all_states[state_idx]:
+                    if all_states[state_idx] in opt_policy[split].keys():
+                        opt_policy[split][all_states[state_idx]].append((all_controls[control_idx],round(state_usage,2)))
+                    else:
+                        opt_policy[split][all_states[state_idx]] = [(all_controls[control_idx],round(state_usage,2))]
+                if (i+1) % card_U == 0:
+                    start_controls += card_U
+                    end_controls += card_U
+            # for state in opt_policy[split].keys():
+            #     print(f"{state}")
+            #     for item in opt_policy[split][state]:
+            #         print(f"\t{item[0]} | {item[1]}%")
+            # for pitch in all_pitches:
+            #     total_usage = 0.0
+            #     for control in [f"{pitch} {location}" for location in all_locations]:
+            #         control_idx = all_controls.index(control)
+            #         for i in range(card_vars-7*card_U):
+            #             control_jdx = i % card_U
+            #             if control_jdx == control_idx:
+            #                 total_usage += 100*rs[i]/np.sum(rs[:-7*card_U])
+            #     total_usage = round(total_usage,2)
+            #     if total_usage > 0:
+            #         print(f"Pitch {pitch} | used {total_usage}% of the time")
+            # for location in all_locations:
+            #     total_usage = 0.0
+            #     for control in [f"{pitch} {location}" for pitch in all_pitches]:
+            #         control_idx = all_controls.index(control)
+            #         for i in range(card_vars-7*card_U):
+            #             control_jdx = i % card_U
+            #             if control_jdx == control_idx:
+            #                 total_usage += 100*rs[i]/np.sum(rs[:-7*card_U])
+            #     total_usage = round(total_usage,2)
+            #     if total_usage > 0:
+            #         print(f"location {location} | used {total_usage}% of the time")
+            # print(f"Optimal policy for {split[0]}HP vs {split[1]}HH | final func. value: {res.fun}\n\n")
+        json.dump(opt_policy,open(filename,"w"),indent = 4)
+        # visualize_policy(opt_policy,start_date,end_date,suffix = "pitch_location_constrained")
+    else:
+        opt_policy = json.load(open(found_filename,"r"))
+        # print(opt_policy)
+    # visualize_policy(opt_policy,start_date,end_date,suffix = "")
+    return opt_policy
+
 # @st.cache_data
 def simulate_next_pitch_count_only(split,balls,strikes,n_sims,pitch_constraints,location_constraints):
     # solve with constraints
     # print("hey")
     count = f"({balls},{strikes})"
     opt_policy = pitch_solver_main_count_only(pitch_constraints,location_constraints)
-    # fig = visualize_policy(opt_policy,split,count)
-    # st.pyplot(fig)
+    fig = visualize_policy(opt_policy,split,count)
+    st.pyplot(fig)
     # print(opt_policy[split][count])
     # opt_controls = [x[0] for x in opt_policy[split][count]]
     # opt_probs = np.array([x[1] for x in opt_policy[split][count]])
