@@ -1,1 +1,2 @@
 matplotlib==3.10.8
+scipy @ file:///C:/bld/scipy-split_1768799521451/work/dist/scipy-1.17.0-cp314-cp314-win_amd64.whl#sha256=a309c3c4aa4c92c351228ef5e9cc6ae88c3a09b9e71822eff1af4ae611c0fd7c
