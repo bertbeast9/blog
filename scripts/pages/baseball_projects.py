@@ -341,6 +341,8 @@ def pitch_solver_main_count_only(pitch_constraints,location_constraints):
     # # # # opt_policy = json.load(open(f"C:/Users/sambe/Python/mlb/data/mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_opt_policy.json","r"))
     # # # # visualize_policy(opt_policy,start_date,end_date,suffix = "")
     folder = "./mdls/count_only_opt_policies"
+    filename = os.path.join(folder,"CNN_VM_CMP.jpg")
+    st.image(filename)
     found_filename = ""
     i = 0
     for i,filename in enumerate(os.listdir(folder)):
