@@ -32,7 +32,7 @@ st.write("The control at our disposal is just the pitch and location that we cal
 "uncertainty in the pitch location (i.e. model a pitcher with less command of their " \
 "pitches). The pitch locations are defined as zones according to " \
 "[Baseball Savant](%s) and is depicted in Figure 1." % "https://baseballsavant.mlb.com/")
-st.image("C:/Users/sambe/Python/blog/figures/Savant_Strikezone.png",use_container_width=True,caption="Zone definitions according Baseball Savant")
+st.image("./figures/Savant_Strikezone.png",use_container_width=True,caption="Zone definitions according Baseball Savant")
 st.write("Every pitcher has a repertoire of pitches at their disposal. " \
 "We will assume for this example that our pitcher has three pitches that " \
 "they command well: a 4-Seam Fastball (FF), a Changeup (CH), and a Sweeper " \
