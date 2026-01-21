@@ -340,7 +340,7 @@ def pitch_solver_main_count_only(pitch_constraints,location_constraints):
     end_date = datetime.datetime(2025,11,1)
     # # # # opt_policy = json.load(open(f"C:/Users/sambe/Python/mlb/data/mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_opt_policy.json","r"))
     # # # # visualize_policy(opt_policy,start_date,end_date,suffix = "")
-    folder = "./blog/mdls/count_only_opt_policies"
+    folder = "/mount/src/blog/mdls/count_only_opt_policies"
     found_filename = ""
     i = 0
     for i,filename in enumerate(os.listdir(folder)):
