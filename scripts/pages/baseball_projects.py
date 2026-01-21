@@ -346,6 +346,7 @@ def pitch_solver_main_count_only(pitch_constraints,location_constraints):
     # st.image(filename)
     found_filename = ""
     i = 0
+    st.write(sys.path)
     for i,filename in enumerate(os.listdir(folder)):
         filename = os.path.join(folder,filename)
         opt_policy = json.load(open(filename,"r"))
