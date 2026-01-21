@@ -260,6 +260,7 @@ def get_state_action_transitions(start_date, end_date):
         for game in game_generator(start_date, end_date):
             print(game.iloc[0,:].game_date)
             # map states
+            
             game["game_state"] = game.apply(lambda x: f"({x.balls},{x.strikes})"  ,axis = 1)
             game["events"] = game["events"].apply(lambda x: x if pd.isna(x) else event_2_state_dict[x])
             for idx, row in game.iterrows():
