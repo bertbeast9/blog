@@ -1,4 +1,12 @@
 import streamlit as st
+import numpy as np
+# functions
+# def simulate_next_pitch_count_only(split,balls,strikes,n_sims,suffix = "unconstrained"):
+#     randnums = np.random.uniform(size = (n_sims,))
+#     opt_policy_dict = 
+
+#     return
+# functions
 
 st.header("Baseball Projects",divider=True)
 st.sidebar.markdown("# Baseball Projects")
@@ -32,7 +40,7 @@ st.write("The control at our disposal is just the pitch and location that we cal
 "uncertainty in the pitch location (i.e. model a pitcher with less command of their " \
 "pitches). The pitch locations are defined as zones according to " \
 "[Baseball Savant](%s) and is depicted in Figure 1." % "https://baseballsavant.mlb.com/")
-st.image("./figures/Savant_Strikezone.png",use_container_width=True,caption="Zone definitions according Baseball Savant")
+st.image("./figures/Savant_Strikezone.png",width='content',caption="Zone definitions according Baseball Savant")
 st.write("Every pitcher has a repertoire of pitches at their disposal. " \
 "We will assume for this example that our pitcher has three pitches that " \
 "they command well: a 4-Seam Fastball (FF), a Changeup (CH), and a Sweeper " \
@@ -99,8 +107,8 @@ st.write("Now, for a better breakdown of optimal pitch selection, it " \
 "splits.\n\nAn advantage of this problem formulation is the ability to " \
 "constrain the solution. This means that the modeler can add constraints " \
 "to the optimal policy such that a pitcher does not use a particular pitch " \
-"over $p_{ub,total} = 50\%$ of the time and/or a pitcher does not use a " \
-"particular pitch in a particular count over $p_{ub,x_{k}} = 50\%$ of " \
+"over $p_{ub,total} = 50\\%$ of the time and/or a pitcher does not use a " \
+"particular pitch in a particular count over $p_{ub,x_{k}} = 50\\%$ of " \
 "the time. The added constraint looks like")
 st.latex(r'''
     \sum_{x_{k} \in S} \sum_{u_{k} \in U(x_{k})} I_{u_{k}}(p)r(x_{k},u_{k}) \leq p_{ub,total}\sum_{x_{k} \in S} \sum_{u_{k} \in U(x_{k})} r(x_{k},u_{k}) \ \ \ \ \forall p \in \{\text{FF},\text{CH},\text{ST}\} \\
@@ -113,16 +121,69 @@ st.write("Working with historical data from the 2008 to 2025 seasons, " \
 "time a pitch is thrown and assuming this pitcher has access to every " \
 "known pitch (see Table below), the results of this optimal policy can " \
 "be simulated below.")
-st.table({"FF":"4-Seam Fastball","SI":"Sinker (2-Seam)","FC":"Cutter",
+pitch_dict = {"FF":"4-Seam Fastball","SI":"Sinker (2-Seam)","FC":"Cutter",
           "CH":"Changeup","FS":"Split-finger","FO":"Forkball","SC":"Screwball",
           "CU":"Curveball","KC":"Knuckle Curve","CS":"Slow Curve","SL":"Slider",
           "ST":"Sweeper","SV":"Slurve","KN":"Knuckleball","EP":"Eephus","FA":"Other",
-          "IN":"Intentional Ball","PO":"Pitchout"})
+          "IN":"Intentional Ball","PO":"Pitchout"}
+st.table(pitch_dict)
+st.divider()
+col1, col2, col3, col4 = st.columns([1,1,1,1])
+with col1:
+    split = st.selectbox("Split",["LHP vs LHH","LHP vs RHH","RHP vs LHH","RHP vs RHH"])
+with col2:
+    n_pitch_sims = st.number_input("Number of sim. pitches",min_value=1, max_value=1000)
+with col3:
+    n_balls = st.number_input("Number of balls",min_value=0, max_value=3)
+with col4:
+    n_strikes = st.number_input("Number of strikes",min_value=0, max_value=2)
+st.divider()
+
+FF_perc = st.slider("FF % usage",min_value = 0, max_value = 100, value = 100)
+SI_perc = st.slider("SI % usage",min_value = 0, max_value = 100, value = 100)
+FC_perc = st.slider("FC % usage",min_value = 0, max_value = 100, value = 100)
+CH_perc = st.slider("CH % usage",min_value = 0, max_value = 100, value = 100)
+FS_perc = st.slider("FS % usage",min_value = 0, max_value = 100, value = 100)
+FO_perc = st.slider("FO % usage",min_value = 0, max_value = 100, value = 100)
+SC_perc = st.slider("SC % usage",min_value = 0, max_value = 100, value = 100)
+CU_perc = st.slider("CU % usage",min_value = 0, max_value = 100, value = 100)
+KC_perc = st.slider("KC % usage",min_value = 0, max_value = 100, value = 100)
+CS_perc = st.slider("CS % usage",min_value = 0, max_value = 100, value = 100)
+SL_perc = st.slider("SL % usage",min_value = 0, max_value = 100, value = 100)
+ST_perc = st.slider("ST % usage",min_value = 0, max_value = 100, value = 100)
+SV_perc = st.slider("SV % usage",min_value = 0, max_value = 100, value = 100)
+KN_perc = st.slider("KN % usage",min_value = 0, max_value = 100, value = 100)
+EP_perc = st.slider("EP % usage",min_value = 0, max_value = 100, value = 100)
+FA_perc = st.slider("FA % usage",min_value = 0, max_value = 100, value = 100)
+IN_perc = st.slider("IN % usage",min_value = 0, max_value = 100, value = 100)
+PO_perc = st.slider("PO % usage",min_value = 0, max_value = 100, value = 100)
+
 st.divider()
 col1, col2 = st.columns([1,1])
-with col1:
-    if st.button("Reset At-Bat"):
-        st.write("Starting with a new count")
-with col2:
-    if st.button("Next Pitch"):
-        st.write("Simulating next pitch")
+with st.container():
+    loc11_perc = col1.slider("loc 11 % usage",min_value = 0, max_value = 100, value = 100)
+    loc12_perc = col2.slider("loc 12 % usage",min_value = 0, max_value = 100, value = 100)
+col3, col4, col5 = st.columns([1,1,1])
+with st.container():
+    loc1_perc = col3.slider("loc 1 % usage",min_value = 0, max_value = 100, value = 100)
+    loc2_perc = col4.slider("loc 2 % usage",min_value = 0, max_value = 100, value = 100)
+    loc3_perc = col5.slider("loc 3 % usage",min_value = 0, max_value = 100, value = 100)
+col6, col7, col8 = st.columns([1,1,1])
+with st.container():
+    loc4_perc = col6.slider("loc 4 % usage",min_value = 0, max_value = 100, value = 100)
+    loc5_perc = col7.slider("loc 5 % usage",min_value = 0, max_value = 100, value = 100)
+    loc6_perc = col8.slider("loc 6 % usage",min_value = 0, max_value = 100, value = 100)
+col9, col10, col11 = st.columns([1,1,1])
+with st.container():
+    loc7_perc = col9.slider("loc 7 % usage",min_value = 0, max_value = 100, value = 100)
+    loc8_perc = col10.slider("loc 8 % usage",min_value = 0, max_value = 100, value = 100)
+    loc9_perc = col11.slider("loc 9 % usage",min_value = 0, max_value = 100, value = 100)
+col12, col13 = st.columns([1,1])
+with st.container():
+    loc13_perc = col12.slider("loc 13 % usage",min_value = 0, max_value = 100, value = 100)
+    loc14_perc = col13.slider("loc 14 % usage",min_value = 0, max_value = 100, value = 100)
+
+
+if st.button("Simulate Pitch"):
+    st.write(f"Simulating next pitch {n_pitch_sims} time(s)")
+    # simulate_next_pitch_count_only(split,n_balls,n_strikes,n_pitch_sims)
