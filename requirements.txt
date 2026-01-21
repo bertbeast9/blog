@@ -1,2 +1,55 @@
+altair==6.0.0
+attrs==25.4.0
+blinker==1.9.0
+cachetools==6.2.4
+certifi==2026.1.4
+cffi @ file:///D:/bld/cffi_1761202906087/work
+charset-normalizer==3.4.4
+clarabel @ file:///D:/bld/clarabel_1765963763355/work
+click==8.3.1
+colorama==0.4.6
+contourpy==1.3.3
+cvxpy @ file:///D:/bld/bld/rattler-build_cvxpy-base_1765974586/work
+cycler==0.12.1
+fonttools==4.61.1
+gitdb==4.0.12
+GitPython==3.1.46
+idna==3.11
+Jinja2==3.1.6
+joblib @ file:///home/conda/feedstock_root/build_artifacts/joblib_1765794027227/work
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+kiwisolver==1.4.9
+MarkupSafe==3.0.3
 matplotlib==3.10.8
-scipy @ file:///C:/bld/scipy-split_1768799521451/work/dist/scipy-1.17.0-cp314-cp314-win_amd64.whl#sha256=a309c3c4aa4c92c351228ef5e9cc6ae88c3a09b9e71822eff1af4ae611c0fd7c
+narwhals==2.15.0
+numpy @ file:///D:/bld/bld/rattler-build_numpy_1768085588/work/dist/numpy-2.4.1-cp314-cp314-win_amd64.whl#sha256=7226b7c638cc1bd916694d038b408b141ba9e652807c9e6909de19a0784e4c0f
+osqp @ file:///D:/bld/bld/rattler-build_osqp_1765848267/work
+packaging==25.0
+pandas==2.3.3
+pillow==12.1.0
+protobuf==6.33.4
+pyarrow==23.0.0
+pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
+pydeck==0.9.1
+pyparsing==3.3.2
+python-dateutil==2.9.0.post0
+pytz==2025.2
+qdldl @ file:///D:/bld/bld/rattler-build_qdldl-python_1757138930/work
+referencing==0.37.0
+requests==2.32.5
+rpds-py==0.30.0
+scikit-learn @ file:///D:/bld/bld/rattler-build_scikit-learn_1765801295/work/dist/scikit_learn-1.8.0-cp314-cp314-win_amd64.whl#sha256=4a02bd2bd28084ceae814e740b0d5b8d2bbc21cb3932bd4580bebc048d475295
+scs @ file:///D:/bld/bld/rattler-build_scs_1768080941/work
+setuptools==80.10.1
+six==1.17.0
+smmap==5.0.2
+streamlit==1.53.0
+tenacity==9.1.2
+threadpoolctl @ file:///home/conda/feedstock_root/build_artifacts/threadpoolctl_1741878222898/work
+toml==0.10.2
+tornado==6.5.4
+typing_extensions==4.15.0
+tzdata==2025.3
+urllib3==2.6.3
+watchdog==6.0.0
