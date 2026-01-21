@@ -346,7 +346,6 @@ def pitch_solver_main_count_only(pitch_constraints,location_constraints):
     # st.image(filename)
     found_filename = ""
     i = 0
-    st.write(sys.path)
     for i,filename in enumerate(os.listdir(folder)):
         filename = os.path.join(folder,filename)
         opt_policy = json.load(open(filename,"r"))
@@ -737,5 +736,4 @@ location_percentage_ub_state = {"1":loc1_perc/100,"2":loc2_perc/100,"3":loc3_per
 
 
 if st.button("Simulate Pitch"):
-    st.write(f"Simulating next pitch {n_pitch_sims} time(s)")
     simulate_next_pitch_count_only(split,n_balls,n_strikes,n_pitch_sims,pitch_constraints=(pitch_percentage_ub_total,pitch_percentage_ub_state),location_constraints=(location_percentage_ub_total,location_percentage_ub_state))
