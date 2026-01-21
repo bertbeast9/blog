@@ -10,8 +10,8 @@ def simulate_next_pitch_count_only(split,balls,strikes,n_sims,pitch_constraints,
     # print("hey")
     count = f"({balls},{strikes})"
     opt_policy = pitch_solver_main_count_only(pitch_constraints,location_constraints)
-    fig = visualize_policy(opt_policy,split,count)
-    st.pyplot(fig)
+    # fig = visualize_policy(opt_policy,split,count)
+    # st.pyplot(fig)
     # print(opt_policy[split][count])
     # opt_controls = [x[0] for x in opt_policy[split][count]]
     # opt_probs = np.array([x[1] for x in opt_policy[split][count]])
