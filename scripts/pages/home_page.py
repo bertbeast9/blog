@@ -1,7 +1,7 @@
 import streamlit as st
 import json
-import sys
-st.write(sys.path)
+# import sys
+# st.write(sys.path)
 st.header ("Home Page", divider=True)
 st.sidebar.markdown("# Home Page")
 st.subheader("Hey y'all!",divider=True)
