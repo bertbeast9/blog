@@ -1062,7 +1062,10 @@ else:
 
 st.divider()
 st.subheader("Pitch Solver (Expanded)")
-st.write("This model now incorporates the number of outs, the runners on, and the split. This solver will take more time as well.")
+st.write("This model now incorporates the number of outs, the runners on, and the split. This solver will take more time as well. "\
+"Additionally, you will notice that some states do not occur with this policy. There will be an error thrown when these states do not occur. " \
+"These states are particularly bad like (3,0) counts with the bases loaded. An assumption of this model is that you can perfectly execute " \
+"every pitch so that you can avoid these 'hitter's counts'. This assumption will be relaxed later.")
 st.write("NEED TO WRITE OUT FULL EQUATIONS FOR THIS SINCE IT IS DEFINED DIFFERENTLY")
 
 pit_col1,pit_col2,pit_col3,pit_col4,pit_col5 = st.columns([1,1,1,1,1])
