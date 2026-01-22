@@ -1026,6 +1026,7 @@ else:
     state = f"({n_balls},{n_strikes},{n_outs},{on_1b},{on_2b},{on_3b},{split2num[split]})"
     # st.write(state)
     # if st.button("Visualize Policy for Current State"):
-    visualize_pitch_policy(state,st.session_state["opt_policy"])
+    if len(st.session_state["opt_policy"].keys()) > 0:
+        visualize_pitch_policy(state,st.session_state["opt_policy"])
 
 
