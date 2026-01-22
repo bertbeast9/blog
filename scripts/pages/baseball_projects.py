@@ -17,8 +17,10 @@ from collections import OrderedDict as ordered_dict
 
 
 # variables
-if 'opt_policy' not in st.session_state:
-    st.session_state["opt_policy"] = dict()
+if 'opt_policy_exp' not in st.session_state:
+    st.session_state["opt_policy_exp"] = dict()
+if 'opt_policy_small' not in st.session_state:
+    st.session_state["opt_policy_small"] = dict()
 
 dtype_dict = {"pitch_type":str,"game_date":str,"release_speed":"Float64",
                 "release_pos_x":"Float64","release_pos_y":"Float64","release_pos_z":"Float64",
@@ -122,6 +124,65 @@ def add_pitcher(ax,p_throws):
     elif p_throws == "R":
         ax.add_patch(Rectangle([-0.5,4],0.5, 0.1,ec = "g",fc = "g"))
     return ax
+def visualize_policy_count_only(policy,state,split):
+    global perc_ax, fig
+    
+
+    fig = plt.figure()
+    font = {
+    'size'   : 4}
+
+    matplotlib.rc('font', **font)
+    # sz_ax = fig.add_subplot(121)
+    # perc_ax = fig.add_subplot(122)
+    # perc_ax.set_visible(False)
+    sz_ax = fig.add_subplot(111)
+    # perc_ax = fig.add_subplot(122)
+    # perc_ax.set_visible(False)
+    fig.canvas.flush_events()
+    sz_ax, zone = add_strikezone(sz_ax)
+    sz_ax = add_pitcher(sz_ax,split[0])
+    sz_ax = add_batter(sz_ax,split[1])
+    for zone_loc in list(range(1,10)) + list(range(11,15)):
+        zone_usage = 0.0
+        zone_pitches = []
+        for item in policy[split][state]:
+            control = item[0]
+            percentage =  item[1]
+            pitch, location = control.split(" ")
+            if zone_loc == int(location):
+                zone_usage += percentage
+                zone_pitches.append([pitch,percentage])
+        zone_usage = round(zone_usage,2)
+        if zone_loc < 10:
+            rx, ry = zone[int(zone_loc)].get_xy()
+            cx = rx + zone[int(zone_loc)].get_width()/2.0
+            cy = ry + zone[int(zone_loc)].get_height()/2.0
+            string = f"Total: {zone_usage}%"
+            for item in zone_pitches:
+                string += f"\n {item[0]} {item[1]}%"
+            sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
+        elif zone_loc == 11 or zone_loc == 12:
+            xys = zone[int(zone_loc)].get_xy()
+            cx = xys[0,0] + 0.0
+            cy = xys[0,1] + 2*zone[1].get_height()
+            string = f"Total: {zone_usage}%"
+            for item in zone_pitches:
+                string += f"\n {item[0]} {item[1]}%"
+            sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
+        elif zone_loc == 13 or zone_loc == 14:
+            xys = zone[int(zone_loc)].get_xy()
+            cx = xys[0,0] + 0.0
+            cy = xys[0,1] - 2*zone[1].get_height()
+            string = f"Total: {zone_usage}%"
+            for item in zone_pitches:
+                string += f"\n {item[0]} {item[1]}%"
+            sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
+
+    fig.suptitle(f"Split: {split} Count: {state}")
+
+    return fig
+
 def visualize_policy(policy,state):
     global perc_ax, fig
     splits = ["LL","LR","RL","RR"]
@@ -183,40 +244,10 @@ def visualize_policy(policy,state):
             for item in zone_pitches:
                 string += f"\n {item[0]} {item[1]}% ({np.round(exp_runs,2)})"
             sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
-        
-
-    # def on_click(event,zone):
-    #     global perc_ax, fig, split, state
-    #     if event.button == 1:
-    #         [zone[curr_zone].set_fc("none") for curr_zone in list(range(1,10)) + list(range(11,15))]
-    #         for curr_zone in list(range(1,10)) + list(range(11,15)):
-    #             if zone[curr_zone].contains_point([event.x,event.y]):
-    #                 global perc_ax, fig
-    #                 zone[curr_zone].set_fc("r")
-    #                 # perc_ax.clear()
-    #                 # perc_ax.set_visible(True)
-    #                 zone_pitches = []
-    #                 zone_percs = []
-    #                 for item in policy[state]:
-    #                     if int(item[0].split(" ")[1]) == curr_zone:
-    #                         zone_pitches.append(item[0].split(" ")[0])
-    #                         zone_percs.append(item[1])
-    #                 # perc_ax.pie(zone_percs,labels = zone_pitches, colors = [pitch_color_dict[x] for x in zone_pitches],autopct='%1.1f%%')
-    #                 # perc_ax.legend(loc = "best")
-    #                 fig.canvas.draw()
-    #                 fig.canvas.flush_events()
-
-    # cid = fig.canvas.mpl_connect("button_press_event", lambda event: on_click(event, zone))
 
     fig.suptitle(f"Split: {split} Count: {count} Outs: {outs} Bases: {on_1b}{on_2b}{on_3b}")
-    # manager = plt.get_current_fig_manager()
-    # manager.full_screen_toggle()
-    # plt.savefig(f"C:/Users/sambe/Python/mlb/figures/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_{split}_{state}_{suffix}.jpg")
-    # plt.close()
-    # plt.show()
 
     return fig
-
 
 def game_generator(startdate, enddate):
     # get folders
@@ -560,6 +591,7 @@ def pitch_solver_main_count_outs_bases(pitch_constraints,location_constraints):
                     g.append(g_state_control)
         c = np.array(g)
         st.write("Setting up balance equations")
+        # var_bounds = [(0,None) for i in range(card_vars)]
         var_bounds = [(0,None) for i in range(card_vars)]
         TMP = lil_matrix((card_S,card_vars))#np.zeros([card_S,card_vars])
         A_eq1 = np.ones([1,card_vars])
@@ -779,12 +811,12 @@ def pitch_solver_main_count_only(pitch_constraints,location_constraints):
                 if (i+1) % card_U == 0:
                     start_controls += card_U
                     end_controls += card_U
-        opt_policy["average_runs_per_inning"] = res.fun
+        opt_policy["obj_fun_val"] = res.fun
 
         json.dump(opt_policy,open(filename,"w"),indent = 4)
     else:
         opt_policy = json.load(open(found_filename,"r"))
-    st.write(f"Policy solved || Average runs per inning: {opt_policy["average_runs_per_inning"]:0.3e}")
+    st.write(f"Policy solved || Objective function value: {opt_policy["obj_fun_val"]:0.3e}")
     return opt_policy
 
 def simulate_next_pitch_count_only(split,balls,strikes,n_sims,pitch_constraints,location_constraints):
@@ -795,6 +827,10 @@ def simulate_next_pitch_count_only(split,balls,strikes,n_sims,pitch_constraints,
     # st.pyplot(fig)
     return 
 
+def solve_pitch_policy_count_only(pitch_constraints,location_constraints):
+    opt_policy = pitch_solver_main_count_only(pitch_constraints,location_constraints)
+    return opt_policy
+
 def solve_pitch_policy_count_outs_bases(pitch_constraints,location_constraints):
     # solve with constraints
     opt_policy = pitch_solver_main_count_outs_bases(pitch_constraints,location_constraints)
@@ -802,6 +838,11 @@ def solve_pitch_policy_count_outs_bases(pitch_constraints,location_constraints):
     return  opt_policy
 def visualize_pitch_policy(state,opt_policy):
     fig = visualize_policy(opt_policy,state)
+    st.pyplot(fig)
+    return
+
+def visualize_pitch_policy_count_only(state,opt_policy,split):
+    fig = visualize_policy_count_only(opt_policy,state,split)
     st.pyplot(fig)
     return
 
@@ -928,13 +969,113 @@ pitch_dict = {"FF":"4-Seam Fastball","SI":"Sinker (2-Seam)","FC":"Cutter",
 st.table(pitch_dict)
 st.divider()
 
+pit_col1_small,pit_col2_small,pit_col3_small,pit_col4_small,pit_col5_small = st.columns([1,1,1,1,1])
+with pit_col1_small:
+    FF_perc_small = st.slider("FF % usage",key=0,min_value = 0, max_value = 100, value = 40)
+    SI_perc_small = st.slider("SI % usage",key=1,min_value = 0, max_value = 100, value = 0)
+    FC_perc_small = st.slider("FC % usage",key=2,min_value = 0, max_value = 100, value = 0)
+with pit_col2_small:
+    CH_perc_small = st.slider("CH % usage",key=3,min_value = 0, max_value = 100, value = 30)
+    FS_perc_small = st.slider("FS % usage",key=4,min_value = 0, max_value = 100, value = 0)
+    FO_perc_small = st.slider("FO % usage",key=5,min_value = 0, max_value = 100, value = 0)
+    SC_perc_small = st.slider("SC % usage",key=6,min_value = 0, max_value = 100, value = 0)
+with pit_col3_small:
+
+    CU_perc_small = st.slider("CU % usage",key=7,min_value = 0, max_value = 100, value = 0)
+    KC_perc_small = st.slider("KC % usage",key=8,min_value = 0, max_value = 100, value = 0)
+    CS_perc_small = st.slider("CS % usage",key=9,min_value = 0, max_value = 100, value = 0)
+with pit_col4_small:
+    SL_perc_small = st.slider("SL % usage",key=10,min_value = 0, max_value = 100, value = 30)
+    ST_perc_small = st.slider("ST % usage",key=11,min_value = 0, max_value = 100, value = 0)
+    SV_perc_small = st.slider("SV % usage",key=12,min_value = 0, max_value = 100, value = 0)
+with pit_col5_small:
+    KN_perc_small = st.slider("KN % usage",key=13,min_value = 0, max_value = 100, value = 0)
+    EP_perc_small = st.slider("EP % usage",key=14,min_value = 0, max_value = 100, value = 0)
+    FA_perc_small = st.slider("FA % usage",key=15,min_value = 0, max_value = 100, value = 0)
+    IN_perc_small = st.slider("IN % usage",key=16,min_value = 0, max_value = 100, value = 0)
+    PO_perc_small = st.slider("PO % usage",key=17,min_value = 0, max_value = 100, value = 0)
+pitch_sum_small = FF_perc_small + SI_perc_small + FC_perc_small + CH_perc_small + FS_perc_small + FO_perc_small + SC_perc_small + CU_perc_small + KC_perc_small + CS_perc_small + SL_perc_small + ST_perc_small + SV_perc_small + KN_perc_small + EP_perc_small + FA_perc_small + IN_perc_small + PO_perc_small 
+pitch_sum_gt_100_small = pitch_sum_small >= 100
+if not pitch_sum_gt_100_small:
+    st.warning(f"The sum of the pitch percentages needs to be greater than or equal to 100%")
+
+st.divider()
+perc_strike = 50
+inzone_perc = int(np.ceil(perc_strike/9)) + 10
+outzone_perc = int(np.ceil((100-perc_strike)/4)) + 10
+col1_small, col2_small = st.columns([1,1])
+with st.container():
+    loc11_perc_small = col1_small.slider("loc 11 % usage",key=18,min_value = 0, max_value = 100, value = outzone_perc)
+    loc12_perc_small = col2_small.slider("loc 12 % usage",key=19,min_value = 0, max_value = 100, value = outzone_perc)
+col3_small, col4_small, col5_small = st.columns([1,1,1])
+with st.container():
+    loc1_perc_small = col3_small.slider("loc 1 % usage",key=20,min_value = 0, max_value = 100, value = inzone_perc)
+    loc2_perc_small = col4_small.slider("loc 2 % usage",key=21,min_value = 0, max_value = 100, value = inzone_perc)
+    loc3_perc_small = col5_small.slider("loc 3 % usage",key=22,min_value = 0, max_value = 100, value = inzone_perc)
+col6_small, col7_small, col8_small = st.columns([1,1,1])
+with st.container():
+    loc4_perc_small = col6_small.slider("loc 4 % usage",key=23,min_value = 0, max_value = 100, value = inzone_perc)
+    loc5_perc_small = col7_small.slider("loc 5 % usage",key=24,min_value = 0, max_value = 100, value = inzone_perc)
+    loc6_perc_small = col8_small.slider("loc 6 % usage",key=25,min_value = 0, max_value = 100, value = inzone_perc)
+col9_small, col10_small, col11_small = st.columns([1,1,1])
+with st.container():
+    loc7_perc_small = col9_small.slider("loc 7 % usage",key=26,min_value = 0, max_value = 100, value = inzone_perc)
+    loc8_perc_small = col10_small.slider("loc 8 % usage",key=27,min_value = 0, max_value = 100, value = inzone_perc)
+    loc9_perc_small = col11_small.slider("loc 9 % usage",key=28,min_value = 0, max_value = 100, value = inzone_perc)
+col12_small, col13_small = st.columns([1,1])
+with st.container():
+    loc13_perc_small = col12_small.slider("loc 13 % usage",key=29,min_value = 0, max_value = 100, value = outzone_perc)
+    loc14_perc_small = col13_small.slider("loc 14 % usage",key=30,min_value = 0, max_value = 100, value = outzone_perc)
+
+
+# double check that percentages are >= 100%
+loc_sum_small = loc1_perc_small + loc2_perc_small + loc3_perc_small + loc4_perc_small + loc5_perc_small + loc6_perc_small + loc7_perc_small + loc8_perc_small + loc9_perc_small + loc11_perc_small + loc12_perc_small + loc13_perc_small + loc14_perc_small 
+loc_sum_gt_100_small = loc_sum_small >= 100
+if not loc_sum_gt_100_small:
+    st.warning(f"The sum of the location percentages needs to be greater than or equal to 100%")
+
+
+pitch_percentage_ub_total_small = {"FF":FF_perc_small/100,"FS":FS_perc_small/100,"FA":FA_perc_small/100,"FO":FO_perc_small/100,"CU":CU_perc_small/100,"SL":SL_perc_small/100,"FC":FC_perc_small/100,"SI":SI_perc_small/100,"ST":ST_perc_small/100,"CH":CH_perc_small/100,"KN":KN_perc_small/100,"SV":SV_perc_small/100,"KC":KC_perc_small/100,"EP":EP_perc_small/100,"PO":PO_perc_small/100}
+pitch_percentage_ub_state_small = {"FF":FF_perc_small/100,"FS":FS_perc_small/100,"FA":FA_perc_small/100,"FO":FO_perc_small/100,"CU":CU_perc_small/100,"SL":SL_perc_small/100,"FC":FC_perc_small/100,"SI":SI_perc_small/100,"ST":ST_perc_small/100,"CH":CH_perc_small/100,"KN":KN_perc_small/100,"SV":SV_perc_small/100,"KC":KC_perc_small/100,"EP":EP_perc_small/100,"PO":PO_perc_small/100}
+location_percentage_ub_total_small = {"1":loc1_perc_small/100,"2":loc2_perc_small/100,"3":loc3_perc_small/100,"4":loc4_perc_small/100,"5":loc5_perc_small/100,"6":loc6_perc_small/100,"7":loc7_perc_small/100,"8":loc8_perc_small/100,"9":loc9_perc_small/100,"11":loc11_perc_small/100,"12":loc12_perc_small/100,"13":loc13_perc_small/100,"14":loc14_perc_small/100}
+location_percentage_ub_state_small = {"1":loc1_perc_small/100,"2":loc2_perc_small/100,"3":loc3_perc_small/100,"4":loc4_perc_small/100,"5":loc5_perc_small/100,"6":loc6_perc_small/100,"7":loc7_perc_small/100,"8":loc8_perc_small/100,"9":loc9_perc_small/100,"11":loc11_perc_small/100,"12":loc12_perc_small/100,"13":loc13_perc_small/100,"14":loc14_perc_small/100}
+
+if not loc_sum_gt_100_small or not pitch_sum_gt_100_small:
+    st.warning(f"Optimal policy infeasible\nThe sum of the location and pitch percentages needs to be greater than or equal to 100%")
+else:
+    if st.button("Solve Pitch Policy",key = 31):
+        st.session_state["opt_policy_small"] = solve_pitch_policy_count_only(pitch_constraints=(pitch_percentage_ub_total_small,pitch_percentage_ub_state_small),location_constraints=(location_percentage_ub_total_small,location_percentage_ub_state_small))
+    st.divider()
+    st.write(f"NOTE: If you change any of the constraints above, you will need to resolve the pitch policy above. Then, you can see the effects of these new constraints afterwards")
+    col1_small, col2_small, col3_small = st.columns([1,1,1])
+    with col1_small:
+        split_small = st.selectbox("Split",["LHP vs LHH","LHP vs RHH","RHP vs LHH","RHP vs RHH"],key = 32)
+    with col2_small:
+        n_balls_small = st.number_input("Number of balls",key = 33,min_value=0, max_value=3)
+    with col3_small:
+        n_strikes_small = st.number_input("Number of strikes",key = 34,min_value=0, max_value=2)
+    
+    st.divider()
+    split_dict = {"LHP vs LHH":"LL","LHP vs RHH":"LR","RHP vs LHH":"RL","RHP vs RHH":"RR"}
+    split_small = split_dict[split_small]
+    state_small = f"({n_balls_small},{n_strikes_small})"
+    if len(st.session_state["opt_policy_small"].keys()) > 0:
+        visualize_pitch_policy_count_only(state_small,st.session_state["opt_policy_small"],split_small)
+
+
+
+st.divider()
+st.subheader("Pitch Solver (Expanded)")
+st.write("This model now incorporates the number of outs, the runners on, and the split.")
+st.write("NEED TO WRITE OUT FULL EQUATIONS FOR THIS SINCE IT IS DEFINED DIFFERENTLY")
+
 pit_col1,pit_col2,pit_col3,pit_col4,pit_col5 = st.columns([1,1,1,1,1])
 with pit_col1:
-    FF_perc = st.slider("FF % usage",min_value = 0, max_value = 100, value = 0)
+    FF_perc = st.slider("FF % usage",min_value = 0, max_value = 100, value = 40)
     SI_perc = st.slider("SI % usage",min_value = 0, max_value = 100, value = 0)
     FC_perc = st.slider("FC % usage",min_value = 0, max_value = 100, value = 0)
 with pit_col2:
-    CH_perc = st.slider("CH % usage",min_value = 0, max_value = 100, value = 0)
+    CH_perc = st.slider("CH % usage",min_value = 0, max_value = 100, value = 30)
     FS_perc = st.slider("FS % usage",min_value = 0, max_value = 100, value = 0)
     FO_perc = st.slider("FO % usage",min_value = 0, max_value = 100, value = 0)
     SC_perc = st.slider("SC % usage",min_value = 0, max_value = 100, value = 0)
@@ -944,7 +1085,7 @@ with pit_col3:
     KC_perc = st.slider("KC % usage",min_value = 0, max_value = 100, value = 0)
     CS_perc = st.slider("CS % usage",min_value = 0, max_value = 100, value = 0)
 with pit_col4:
-    SL_perc = st.slider("SL % usage",min_value = 0, max_value = 100, value = 0)
+    SL_perc = st.slider("SL % usage",min_value = 0, max_value = 100, value = 30)
     ST_perc = st.slider("ST % usage",min_value = 0, max_value = 100, value = 0)
     SV_perc = st.slider("SV % usage",min_value = 0, max_value = 100, value = 0)
 with pit_col5:
@@ -961,27 +1102,27 @@ if not pitch_sum_gt_100:
 st.divider()
 col1, col2 = st.columns([1,1])
 with st.container():
-    loc11_perc = col1.slider("loc 11 % usage",min_value = 0, max_value = 100, value = 100)
-    loc12_perc = col2.slider("loc 12 % usage",min_value = 0, max_value = 100, value = 100)
+    loc11_perc = col1.slider("loc 11 % usage",min_value = 0, max_value = 100, value = outzone_perc)
+    loc12_perc = col2.slider("loc 12 % usage",min_value = 0, max_value = 100, value = outzone_perc)
 col3, col4, col5 = st.columns([1,1,1])
 with st.container():
-    loc1_perc = col3.slider("loc 1 % usage",min_value = 0, max_value = 100, value = 100)
-    loc2_perc = col4.slider("loc 2 % usage",min_value = 0, max_value = 100, value = 100)
-    loc3_perc = col5.slider("loc 3 % usage",min_value = 0, max_value = 100, value = 100)
+    loc1_perc = col3.slider("loc 1 % usage",min_value = 0, max_value = 100, value = inzone_perc)
+    loc2_perc = col4.slider("loc 2 % usage",min_value = 0, max_value = 100, value = inzone_perc)
+    loc3_perc = col5.slider("loc 3 % usage",min_value = 0, max_value = 100, value = inzone_perc)
 col6, col7, col8 = st.columns([1,1,1])
 with st.container():
-    loc4_perc = col6.slider("loc 4 % usage",min_value = 0, max_value = 100, value = 100)
-    loc5_perc = col7.slider("loc 5 % usage",min_value = 0, max_value = 100, value = 100)
-    loc6_perc = col8.slider("loc 6 % usage",min_value = 0, max_value = 100, value = 100)
+    loc4_perc = col6.slider("loc 4 % usage",min_value = 0, max_value = 100, value = inzone_perc)
+    loc5_perc = col7.slider("loc 5 % usage",min_value = 0, max_value = 100, value = inzone_perc)
+    loc6_perc = col8.slider("loc 6 % usage",min_value = 0, max_value = 100, value = inzone_perc)
 col9, col10, col11 = st.columns([1,1,1])
 with st.container():
-    loc7_perc = col9.slider("loc 7 % usage",min_value = 0, max_value = 100, value = 100)
-    loc8_perc = col10.slider("loc 8 % usage",min_value = 0, max_value = 100, value = 100)
-    loc9_perc = col11.slider("loc 9 % usage",min_value = 0, max_value = 100, value = 100)
+    loc7_perc = col9.slider("loc 7 % usage",min_value = 0, max_value = 100, value = inzone_perc)
+    loc8_perc = col10.slider("loc 8 % usage",min_value = 0, max_value = 100, value = inzone_perc)
+    loc9_perc = col11.slider("loc 9 % usage",min_value = 0, max_value = 100, value = inzone_perc)
 col12, col13 = st.columns([1,1])
 with st.container():
-    loc13_perc = col12.slider("loc 13 % usage",min_value = 0, max_value = 100, value = 100)
-    loc14_perc = col13.slider("loc 14 % usage",min_value = 0, max_value = 100, value = 100)
+    loc13_perc = col12.slider("loc 13 % usage",min_value = 0, max_value = 100, value = outzone_perc)
+    loc14_perc = col13.slider("loc 14 % usage",min_value = 0, max_value = 100, value = outzone_perc)
 
 
 # double check that percentages are >= 100%
@@ -1000,7 +1141,7 @@ if not loc_sum_gt_100 or not pitch_sum_gt_100:
     st.warning(f"Optimal policy infeasible\nThe sum of the location and pitch percentages needs to be greater than or equal to 100%")
 else:
     if st.button("Solve Pitch Policy"):
-        st.session_state["opt_policy"] = solve_pitch_policy_count_outs_bases(pitch_constraints=(pitch_percentage_ub_total,pitch_percentage_ub_state),location_constraints=(location_percentage_ub_total,location_percentage_ub_state))
+        st.session_state["opt_policy_exp"] = solve_pitch_policy_count_outs_bases(pitch_constraints=(pitch_percentage_ub_total,pitch_percentage_ub_state),location_constraints=(location_percentage_ub_total,location_percentage_ub_state))
     st.divider()
     st.write(f"NOTE: If you change any of the constraints above, you will need to resolve the pitch policy above. Then, you can see the effects of these new constraints afterwards")
     col1, col2, col3, col4 = st.columns([1,1,1,1])
@@ -1026,7 +1167,7 @@ else:
     state = f"({n_balls},{n_strikes},{n_outs},{on_1b},{on_2b},{on_3b},{split2num[split]})"
     # st.write(state)
     # if st.button("Visualize Policy for Current State"):
-    if len(st.session_state["opt_policy"].keys()) > 0:
-        visualize_pitch_policy(state,st.session_state["opt_policy"])
+    if len(st.session_state["opt_policy_exp"].keys()) > 0:
+        visualize_pitch_policy(state,st.session_state["opt_policy_exp"])
 
 
