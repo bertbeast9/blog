@@ -11,8 +11,15 @@ import os
 import pickle
 from copy import copy
 from scipy.optimize import linprog
+from scipy.sparse import lil_matrix, hstack, vstack
+from collections import OrderedDict as ordered_dict
+
+
 
 # variables
+if 'opt_policy' not in st.session_state:
+    st.session_state["opt_policy"] = dict()
+
 dtype_dict = {"pitch_type":str,"game_date":str,"release_speed":"Float64",
                 "release_pos_x":"Float64","release_pos_y":"Float64","release_pos_z":"Float64",
                 "player_name":str,"batter":"Int64","pitcher":"Int64","events":str,"description":str,
@@ -47,6 +54,38 @@ dtype_dict = {"pitch_type":str,"game_date":str,"release_speed":"Float64",
 # variables
 
 # functions
+def order_dict(dict_, keylevel = None):
+    if keylevel is not None:
+        dict_ = dict_[keylevel]
+    tmp = list()
+    dict_list = list()
+    ord_dict = ordered_dict()
+    for key, value in dict_.items():
+        if isinstance(dict_[key],dict):
+            dict_list.append(order_dict(dict_,key))
+        else:
+            tmp.append((key,value))
+    # print(dict_list)
+    # input()
+    dict_list = sorted(dict_list, key = lambda x: x[0]["N"], reverse = True)
+    # print(dict_list)
+    # input()
+    for subdict, key in dict_list:
+        ord_dict[key] = subdict
+    # print(tmp)
+    # input()
+    tmp = sorted(tmp, key = lambda x: x[1] if isinstance(x[1],int) else x[1][1]/x[1][0], reverse=True)
+    # print(tmp)
+    # input()
+    for key, item in tmp:
+        ord_dict[key] = item
+
+    if keylevel is not None:
+        return ord_dict, keylevel
+    else:
+        return ord_dict
+
+
 def add_strikezone(ax, bot_sz = 1.54, top_sz = 3.35):
     width = 17/12
     box_height = (1/3)*(top_sz-bot_sz)
@@ -83,13 +122,19 @@ def add_pitcher(ax,p_throws):
     elif p_throws == "R":
         ax.add_patch(Rectangle([-0.5,4],0.5, 0.1,ec = "g",fc = "g"))
     return ax
-def visualize_policy(policy,split,state):
+def visualize_policy(policy,state):
     global perc_ax, fig
-    # for split in ["LL","LR","RL","RR"]:
-    #     for state in policy[split].keys():
+    splits = ["LL","LR","RL","RR"]
+    split = splits[int(state[-2])]
+    on_3b = int(state[-4])
+    on_2b = int(state[-6])
+    on_1b = int(state[-8])
+    outs = int(state[-10])
+    count = f"{state[:4]})"
+
     fig = plt.figure()
     font = {
-    'size'   : 6}
+    'size'   : 4}
 
     matplotlib.rc('font', **font)
     # sz_ax = fig.add_subplot(121)
@@ -105,10 +150,11 @@ def visualize_policy(policy,split,state):
     for zone_loc in list(range(1,10)) + list(range(11,15)):
         zone_usage = 0.0
         zone_pitches = []
-        for item in policy[split][state]:
+        for item in policy[state]:
             control = item[0]
             percentage =  item[1]
-            pitch, location = control.split(" ")
+            exp_runs = item[2]
+            pitch, location = control.strip("()").split(",")
             if zone_loc == int(location):
                 zone_usage += percentage
                 zone_pitches.append([pitch,percentage])
@@ -119,7 +165,7 @@ def visualize_policy(policy,split,state):
             cy = ry + zone[int(zone_loc)].get_height()/2.0
             string = f"Total: {zone_usage}%"
             for item in zone_pitches:
-                string += f"\n {item[0]} {item[1]}%"
+                string += f"\n {item[0]} {item[1]}% ({np.round(exp_runs,2)})"
             sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
         elif zone_loc == 11 or zone_loc == 12:
             xys = zone[int(zone_loc)].get_xy()
@@ -127,7 +173,7 @@ def visualize_policy(policy,split,state):
             cy = xys[0,1] + 2*zone[1].get_height()
             string = f"Total: {zone_usage}%"
             for item in zone_pitches:
-                string += f"\n {item[0]} {item[1]}%"
+                string += f"\n {item[0]} {item[1]}% ({np.round(exp_runs,2)})"
             sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
         elif zone_loc == 13 or zone_loc == 14:
             xys = zone[int(zone_loc)].get_xy()
@@ -135,34 +181,34 @@ def visualize_policy(policy,split,state):
             cy = xys[0,1] - 2*zone[1].get_height()
             string = f"Total: {zone_usage}%"
             for item in zone_pitches:
-                string += f"\n {item[0]} {item[1]}%"
+                string += f"\n {item[0]} {item[1]}% ({np.round(exp_runs,2)})"
             sz_ax.annotate(string,(cx,cy),color='k',ha='center',va='center')
         
 
-    def on_click(event,zone):
-        global perc_ax, fig, split, state
-        if event.button == 1:
-            [zone[curr_zone].set_fc("none") for curr_zone in list(range(1,10)) + list(range(11,15))]
-            for curr_zone in list(range(1,10)) + list(range(11,15)):
-                if zone[curr_zone].contains_point([event.x,event.y]):
-                    global perc_ax, fig
-                    zone[curr_zone].set_fc("r")
-                    # perc_ax.clear()
-                    # perc_ax.set_visible(True)
-                    zone_pitches = []
-                    zone_percs = []
-                    for item in policy[split][state]:
-                        if int(item[0].split(" ")[1]) == curr_zone:
-                            zone_pitches.append(item[0].split(" ")[0])
-                            zone_percs.append(item[1])
-                    # perc_ax.pie(zone_percs,labels = zone_pitches, colors = [pitch_color_dict[x] for x in zone_pitches],autopct='%1.1f%%')
-                    # perc_ax.legend(loc = "best")
-                    fig.canvas.draw()
-                    fig.canvas.flush_events()
+    # def on_click(event,zone):
+    #     global perc_ax, fig, split, state
+    #     if event.button == 1:
+    #         [zone[curr_zone].set_fc("none") for curr_zone in list(range(1,10)) + list(range(11,15))]
+    #         for curr_zone in list(range(1,10)) + list(range(11,15)):
+    #             if zone[curr_zone].contains_point([event.x,event.y]):
+    #                 global perc_ax, fig
+    #                 zone[curr_zone].set_fc("r")
+    #                 # perc_ax.clear()
+    #                 # perc_ax.set_visible(True)
+    #                 zone_pitches = []
+    #                 zone_percs = []
+    #                 for item in policy[state]:
+    #                     if int(item[0].split(" ")[1]) == curr_zone:
+    #                         zone_pitches.append(item[0].split(" ")[0])
+    #                         zone_percs.append(item[1])
+    #                 # perc_ax.pie(zone_percs,labels = zone_pitches, colors = [pitch_color_dict[x] for x in zone_pitches],autopct='%1.1f%%')
+    #                 # perc_ax.legend(loc = "best")
+    #                 fig.canvas.draw()
+    #                 fig.canvas.flush_events()
 
-    cid = fig.canvas.mpl_connect("button_press_event", lambda event: on_click(event, zone))
+    # cid = fig.canvas.mpl_connect("button_press_event", lambda event: on_click(event, zone))
 
-    fig.suptitle(f"Split: {split} || State: {state}")
+    fig.suptitle(f"Split: {split} Count: {count} Outs: {outs} Bases: {on_1b}{on_2b}{on_3b}")
     # manager = plt.get_current_fig_manager()
     # manager.full_screen_toggle()
     # plt.savefig(f"C:/Users/sambe/Python/mlb/figures/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_{split}_{state}_{suffix}.jpg")
@@ -318,16 +364,6 @@ def get_state_action_transitions(start_date, end_date):
                 state = all_states[k]
                 if state in term_states:
                     print(f"{state} | avg. cost: {G[l,0,k]}")
-        # print(G)
-        # input()
-            # for j in range(card_S):
-            #     next_state = all_states[j]
-            #     if next_state in term_states:
-            #         row_sum = 0
-            #         for i in range(card_U):
-            #             row_sum += np.sum(O[l,i,:,j])
-            #         G[l,:,j] /= row_sum
-            #         print(f"{next_state} | cost: {G[l,:,j]}")
         pickle.dump((P, G, all_states, all_controls, all_locations, all_pitches, all_splits),open(filename,"wb"))
     
         
@@ -368,68 +404,251 @@ def add_occurence(O, curr_control, curr_state, next_state, curr_cost):
                 O[curr_control][curr_state][next_state][1] += curr_cost
     return O
 
+def get_next_possible_states_and_probs(O,curr_control,curr_state):
+    next_states_probs = []
+    if curr_control in O.keys():
+        if curr_state in O[curr_control].keys():
+            for next_state in O[curr_control][curr_state].keys():
+                if next_state != "N":
+                    next_states_probs.append((next_state,O[curr_control][curr_state][next_state][0]/O[curr_control][curr_state]["N"]))
+    return next_states_probs
+
+def get_expected_runs_scored(O,curr_control,curr_state):
+    exp_runs_scored = 0.0
+    if curr_control in O.keys():
+        if curr_state in O[curr_control].keys():
+            for next_state in O[curr_control][curr_state].keys():
+                if next_state != "N":
+                    exp_runs_scored += (O[curr_control][curr_state][next_state][0]/O[curr_control][curr_state]["N"])*O[curr_control][curr_state][next_state][1]/O[curr_control][curr_state][next_state][0]
+    return exp_runs_scored
+    
+
 
 def pitch_solver_main_count_outs_bases(pitch_constraints,location_constraints):
     start_date = datetime.datetime(2008,3,1)
-    # start_date = datetime.datetime(2025,3,1)
-    # end_date = datetime.datetime(2025,11,1)
     end_date = datetime.datetime(2025,11,1)
-    split_dict = {"LL":0,"LR":1,"RL":2,"RR":3}
-    trans_states = [f"({b},{s},{o},{on_1b},{on_2b},{on_3b},{split})" for b in range(4) for s in range(3) for o in range(3) for on_1b in range(2) for on_2b in range(2) for on_3b in range(2) for split in range(4)]
-    term_states = [f"(-1,-1,-1,-1,-1,-1,-1)"]
-    all_states = trans_states + term_states
-    all_pitches = ["FF","FS","FA","FO","CU","SL","FC","SI","ST","CH","KN","SV","KC","EP","PO"]
-    all_locations = list(range(1,10)) + list(range(11,15))
-    all_controls = [f"({p},{l})" for p in all_pitches for l in all_locations]
-    card_S = len(all_states)
-    card_U = len(all_controls)
-    card_vars = card_S*card_U
-    print(f"Cardinality of states: {card_S}\nCardinality of controls: {card_U}\nTotal # of decision variables: {card_vars}")
-    filename = f"./mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_state_trans_probs_count_outs_bases.pkl"
-    if os.path.isfile(filename):
-        O = json.load(open(filename,"r"))
+    folder = "./mdls/count_outs_bases_opt_policies"
+    found_filename = ""
+    i = 0
+    for i, filename in enumerate(os.listdir(folder)):
+        filename = os.path.join(folder,filename)
+        opt_policy = json.load(open(filename,"r"))
+        # print(opt_policy)
+        if opt_policy["constraints"]["pitch_perc_ub_total"] == pitch_constraints[0] and \
+            opt_policy["constraints"]["pitch_perc_ub_state"] == pitch_constraints[1] and \
+            opt_policy["constraints"]["location_perc_ub_total"] == location_constraints[0] and \
+            opt_policy["constraints"]["location_perc_ub_state"] == location_constraints[1]:
+            found_filename = filename
+            break
+    if len(found_filename) < 10:
+        policy_filename = os.path.join(folder, f"{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_opt_policy_{datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}")
+        print(f"creating new constraints file {policy_filename}")
+        split_dict = {"LL":0,"LR":1,"RL":2,"RR":3}
+        trans_states = [f"({b},{s},{o},{on_1b},{on_2b},{on_3b},{split})" for b in range(4) for s in range(3) for o in range(3) for on_1b in range(2) for on_2b in range(2) for on_3b in range(2) for split in range(4)]
+        term_states = [f"(-1,-1,-1,-1,-1,-1,-1)"]
+        all_states = trans_states + term_states
+        all_pitches = ["FF","FS","FA","FO","CU","SL","FC","SI","ST","CH","KN","SV","KC","EP","PO"]
+        all_locations = list(range(1,10)) + list(range(11,15))
+        all_controls = [f"({p},{l})" for p in all_pitches for l in all_locations]
+        card_S = len(all_states)
+        card_U = len(all_controls)
+        card_vars = card_S*card_U
+        st.write(f"Cardinality of states: {card_S}\nCardinality of controls: {card_U}\nTotal # of decision variables: {card_vars}")
+        filename = f"./mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_state_trans_probs_count_outs_bases.pkl"
+        if os.path.isfile(filename):
+            st.write(f"Downloading data from {start_date.strftime("%Y_%m_%d")} to {end_date.strftime("%Y_%m_%d")}")
+            O = json.load(open(filename,"r"))
+            st.write(f"Finished downloading data from {start_date.strftime("%Y_%m_%d")} to {end_date.strftime("%Y_%m_%d")}")
+        else:
+            st.write(f"Collecting data from {start_date.strftime("%Y_%m_%d")} to {end_date.strftime("%Y_%m_%d")}")
+            O = dict()
+            for game in game_generator(start_date, end_date):
+                    print(game.iloc[0,:].game_date)
+                    half_inn_R = 0
+                    half_inn_topbot = "Top"
+                    for idx, row in game.iterrows():                    
+                        curr_state = f"({row.balls},{row.strikes},{row.outs_when_up},{int(not pd.isna(row.on_1b))},{int(not pd.isna(row.on_2b))},{int(not pd.isna(row.on_3b))},{split_dict[f"{row.p_throws}{row.stand}"]})"
+                        curr_cost = row.post_bat_score - row.bat_score
+                        # check if there is a pitch_type defined
+                        if not pd.isna(row.pitch_type) and not pd.isna(row.zone):
+                            curr_control = f"({row.pitch_type},{row.zone})"
+                            if idx+1 < game.shape[0]:
+                                next_row = game.iloc[idx+1]
+                                next_state = f"({next_row.balls},{next_row.strikes},{next_row.outs_when_up},{int(not pd.isna(next_row.on_1b))},{int(not pd.isna(next_row.on_2b))},{int(not pd.isna(next_row.on_3b))},{split_dict[f"{next_row.p_throws}{next_row.stand}"]})"
+                                if int(curr_state[1]) > 3 or int(next_state[1]) > 3 or int(curr_state[3]) > 2 or int(next_state[3]) > 2 or int(curr_state[5]) > 2 or int(next_state[5]) > 2:
+                                    print("not possible")
+                                    print(f"{curr_state} -> {next_state}")
+                                else:
+                                    if curr_control in all_controls and curr_state in all_states and next_state in all_states:                                    
+                                        if half_inn_topbot != next_row.inning_topbot:
+                                            O = add_occurence(O, curr_control, curr_state, next_state, curr_cost)
+                                            half_inn_R = 0
+                                            half_inn_topbot = next_row.inning_topbot
+                                        else:
+                                            O = add_occurence(O, curr_control, curr_state, next_state, curr_cost)
+            O = order_dict(O)
+            json.dump(O,open(filename,"w"), indent = 4)
+        # make terminal state (end of inning) to restart with equal split probability
+        for control in all_controls:
+            if control not in O.keys():
+                O[control] = dict()
+                O[control]["N"] = 1
+            for state in term_states:
+                O[control][state] = dict()
+                for next_state in ["(0,0,0,0,0,0,0)","(0,0,0,0,0,0,1)","(0,0,0,0,0,0,2)","(0,0,0,0,0,0,3)"]:
+                    O[control][state][next_state] = [1,0]
+                O[control][state]["N"] = 4
+        # st.write(get_next_possible_states_and_probs(O,"(FF,5)","(-1,-1,-1,-1,-1,-1,-1)"))
+        # assess the expected runs from a location
+        for l in all_locations:
+            location_exp_runs = 0.0
+            for pitch in all_pitches:
+                control = f"({pitch},{l})"
+                for curr_state in O[control].keys():
+                    if curr_state != "N":
+                        curr_state_exp_runs = 0.0
+                        for next_state in O[control][curr_state].keys():
+                            if next_state != "N":
+                                curr_state_exp_runs += O[control][curr_state][next_state][1]/O[control]["N"]
+                        location_exp_runs += curr_state_exp_runs
+                        # print(f"curr location: {l} | curr control: {control} | curr state: {curr_state} | curr state action expected runs: {curr_state_exp_runs}")
+                        # input()
+            # st.write(f"curr location: {l} | curr expected runs: {location_exp_runs}")
+            # input()
+        # # assess the expected runs from a pitch
+        for pitch in all_pitches:
+            location_exp_runs = 0.0
+            for l in all_locations:
+                control = f"({pitch},{l})"
+                for curr_state in O[control].keys():
+                    if curr_state != "N":
+                        curr_state_exp_runs = 0.0
+                        for next_state in O[control][curr_state].keys():
+                            if next_state != "N":
+                                curr_state_exp_runs += O[control][curr_state][next_state][1]/O[control]["N"]
+                        location_exp_runs += curr_state_exp_runs
+                        # print(f"curr location: {l} | curr control: {control} | curr state: {curr_state} | curr state action expected runs: {curr_state_exp_runs}")
+                        # input()
+            # st.write(f"curr pitch: {pitch} | curr expected runs: {location_exp_runs}")
+            # input()
+        opt_policy = dict()
+        opt_policy["constraints"] = dict()
+        opt_policy["constraints"]["pitch_perc_ub_total"] = pitch_constraints[0]
+        opt_policy["constraints"]["pitch_perc_ub_state"] = pitch_constraints[1]
+        opt_policy["constraints"]["location_perc_ub_total"] = location_constraints[0]
+        opt_policy["constraints"]["location_perc_ub_state"] = location_constraints[1]
+        g = []
+        min_occurrences = 0#np.round(0.0001*O["N"])
+        for state in all_states:
+            for control in all_controls:
+                if state == "(-1,-1,-1,-1,-1,-1,-1)":
+                    g.append(0.0)
+                else:
+                    max_val = 5.0
+                    state_control_pair = f"{state}|{control}"
+                    if state in O[control].keys():
+                        if O[control][state]["N"] < min_occurrences:
+                            # st.write(f"{state_control_pair} does not have enough occurrences (<{min_occurrences})")
+                            # input()
+                            g_state_control = max_val
+                        else:
+                            g_state_control = get_expected_runs_scored(O,control,state)
+                    else:
+                        g_state_control = max_val
+                    if g_state_control == 0: # if there has never been a run score on this pitch and situation, avoid it (unlikely/does not have enough data)
+                        g_state_control = max_val
+                    g.append(g_state_control)
+        c = np.array(g)
+        st.write("Setting up balance equations")
+        var_bounds = [(0,None) for i in range(card_vars)]
+        TMP = lil_matrix((card_S,card_vars))#np.zeros([card_S,card_vars])
+        A_eq1 = np.ones([1,card_vars])
+        b_eq1 = np.ones([1])
+        b_eq2 = np.zeros([card_S])
+        for state_jdx, curr_statej in enumerate(all_states):
+            add_ind = np.arange(state_jdx*card_U,(state_jdx+1)*card_U)
+            TMP[state_jdx,add_ind] = 1.0
+        for state_idx, prev_statei in enumerate(all_states):
+            for control_idx, curr_control in enumerate(all_controls):
+                for (next_state, prob) in get_next_possible_states_and_probs(O,curr_control,prev_statei):       
+                    next_state_jdx = all_states.index(next_state)
+                    TMP[next_state_jdx,state_idx*card_U + control_idx] = TMP[next_state_jdx,state_idx*card_U + control_idx] - prob
+        # st.write(A_eq1)
+        # st.write(TMP)
+        A_eq2 = TMP
+        # # # # # # # # # # # percent pitch usage
+        st.write("Setting up pitch constraints (total)")
+        A_ub0 = lil_matrix((len(all_pitches),card_vars))#np.zeros([len(all_pitches),card_vars])#lil_matrix((len(all_pitches),card_vars),dtype = np.float64)#
+        b_ub0 = np.zeros([len(all_pitches)])
+        for i, pitch in enumerate(all_pitches):
+            A_ub0[i,:-card_U] = -pitch_constraints[0][pitch]
+            for j in range(i*(len(all_locations)), card_vars-card_U, len(all_locations)*len(all_pitches)):
+                    for k in range(j,j+len(all_locations)):
+                        A_ub0[i,k] += 1.0
+
+        st.write("Setting up pitch constraints (state)")
+        A_ub1 = lil_matrix((len(all_pitches)*len(trans_states),card_vars))#np.zeros([len(all_pitches)*len(all_states),card_vars])
+        b_ub1 = np.zeros([len(all_pitches)*len(trans_states)])
+        for i in range(len(all_pitches)*len(trans_states)):
+            idx = i // card_S
+            jdx = i % len(all_pitches)
+            A_ub1[i,(i // (len(all_pitches)))*len(all_pitches)*len(all_locations):(i // (len(all_pitches)))*len(all_pitches)*len(all_locations) + len(all_pitches)*len(all_locations)] = -pitch_constraints[1][all_pitches[jdx]]
+            for k in range(i*len(all_locations),(i+1)*len(all_locations)):
+                A_ub1[i,k] += 1.0
+
+        # # # # # # # # # # # percent location usage
+        st.write("Setting up location constraints (total)")
+        A_ub2 = lil_matrix((len(all_locations),card_vars))#np.zeros([len(all_locations),card_vars])
+        b_ub2 = np.zeros([len(all_locations)])
+        for i, location in enumerate(all_locations):
+            A_ub2[i,:-card_U] = -location_constraints[0][f"{location}"]
+            for j in range(i, card_vars-card_U, len(all_locations)):
+                A_ub2[i,j] += 1.0
+
+        st.write("Setting up location constraints (state)")
+        A_ub3 = lil_matrix((len(all_locations)*len(trans_states),card_vars))#np.zeros([len(all_locations)*len(all_states),card_vars])
+        b_ub3 = np.zeros([len(all_locations)*len(trans_states)])
+        for i in range(len(all_locations)*len(trans_states)):
+            idx = i // len(all_locations)
+            jdx = i % len(all_locations)
+            add_ind = np.arange(jdx,len(all_pitches)*len(all_locations),len(all_locations)) + idx * card_U
+            sub_ind = np.arange(idx * card_U,(idx+1) * card_U)
+            A_ub3[i,sub_ind] = -location_constraints[1][f"{all_locations[jdx]}"]
+            for j in add_ind:
+                A_ub3[i,j] += 1.0
+        A_eq = vstack((A_eq1,A_eq2))#np.concat([A_eq1,A_eq2],axis = 0)
+        b_eq = np.concat([b_eq1,b_eq2],axis = 0)
+        A_ub = vstack((A_ub0,A_ub1,A_ub2,A_ub3))#np.concat([A_ub0,A_ub1,A_ub2,A_ub3],axis = 0)
+        b_ub = np.concat([b_ub0,b_ub1,b_ub2,b_ub3],axis = 0)
+        st.write(A_eq.shape)
+        st.write(b_eq.shape)
+        st.write(A_ub.shape)
+        st.write(b_ub.shape)
+        
+        st.write("Solving LP")
+        res = linprog(c,A_eq = A_eq,b_eq = b_eq,A_ub = A_ub, b_ub = b_ub, bounds = var_bounds)#
+        # st.write(res)
+        qs = res.x[:card_vars]
+        start_controls = 0
+        end_controls = card_U
+        for i in range(card_vars):
+            control_idx = i % card_U
+            state_idx = i // card_U
+            state_usage = 100*np.round(qs[i],8)/np.sum(np.round(qs[start_controls:end_controls],8))
+            if state_usage > 0 and "(-1," not in all_states[state_idx]:
+                if all_states[state_idx] in opt_policy.keys():
+                    opt_policy[all_states[state_idx]].append((all_controls[control_idx],round(state_usage,2),get_expected_runs_scored(O,all_controls[control_idx],all_states[state_idx])))
+                else:
+                    opt_policy[all_states[state_idx]] = [(all_controls[control_idx],round(state_usage,2),get_expected_runs_scored(O,all_controls[control_idx],all_states[state_idx]))]
+            if (i+1) % card_U == 0:
+                start_controls += card_U
+                end_controls += card_U
+        opt_policy["average_runs_per_inning"] = res.fun
+        json.dump(opt_policy,open(policy_filename,"w"),indent = 4)
     else:
-        O = dict()
-        for game in game_generator(start_date, end_date):
-                print(game.iloc[0,:].game_date)
-                half_inn_R = 0
-                half_inn_topbot = "Top"
-                for idx, row in game.iterrows():                    
-                    curr_state = f"({row.balls},{row.strikes},{row.outs_when_up},{int(not pd.isna(row.on_1b))},{int(not pd.isna(row.on_2b))},{int(not pd.isna(row.on_3b))},{split_dict[f"{row.p_throws}{row.stand}"]})"
-                    curr_cost = row.post_bat_score - row.bat_score
-                    # check if there is a pitch_type defined
-                    if not pd.isna(row.pitch_type) and not pd.isna(row.zone):
-                        curr_control = f"({row.pitch_type},{row.zone})"
-                        if idx+1 < game.shape[0]:
-                            next_row = game.iloc[idx+1]
-                            next_state = f"({next_row.balls},{next_row.strikes},{next_row.outs_when_up},{int(not pd.isna(next_row.on_1b))},{int(not pd.isna(next_row.on_2b))},{int(not pd.isna(next_row.on_3b))},{split_dict[f"{next_row.p_throws}{next_row.stand}"]})"
-                            if int(curr_state[1]) > 3 or int(next_state[1]) > 3 or int(curr_state[3]) > 2 or int(next_state[3]) > 2 or int(curr_state[5]) > 2 or int(next_state[5]) > 2:
-                                print("not possible")
-                                print(f"{curr_state} -> {next_state}")
-                                # input()
-                            else:
-                                if curr_control in all_controls and curr_state in all_states and next_state in all_states:
-                                    # print(f"{curr_control}, {curr_state}, {next_state}")
-                                    
-                                    if half_inn_topbot != next_row.inning_topbot:
-                                        # print(f"end of half inning {half_inn_topbot}| {half_inn_R} | {row.away_score}-{row.home_score}")
-                                        # next_state = f"(-1,-1,-1,-1,-1,-1,-1)"
-                                        # print(f"curr state: {curr_state} | curr control: {curr_control} | curr cost: {curr_cost} | next state: {next_state}")
-                                        O = add_occurence(O, curr_control, curr_state, next_state, curr_cost)
-                                        # if curr_cost > 0:
-                                        #     input()
-                                        half_inn_R = 0
-                                        half_inn_topbot = next_row.inning_topbot
-                                    else:
-                                        # print(f"curr state: {curr_state} | curr control: {curr_control} | curr cost: {curr_cost} | next state: {next_state}")
-                                        O = add_occurence(O, curr_control, curr_state, next_state, curr_cost)
-                                    # if O[curr_control][curr_state][next_state][1] > 0 and (O[curr_control][curr_state][next_state][1]/O[curr_control][curr_state][next_state][0]) % 1 != 0.0:
-                                    #     print(f"curr state: {curr_state} | curr control: {curr_control} | curr cost: {curr_cost} | next state: {next_state}")
-                                    #     print(O[curr_control][curr_state][next_state][1]/O[curr_control][curr_state][next_state][0])
-                                    #     print(get_next_possible_states_and_probs(O,curr_control,curr_state))
-                                    #     input()
-        O = order_dict(O)
-        json.dump(O,open(filename,"w"), indent = 4)
+        opt_policy = json.load(open(found_filename,"r"))
+    st.write(f"Policy solved || Average runs per inning: {opt_policy["average_runs_per_inning"]:.3e}")
+    
     return opt_policy
 
 def pitch_solver_main_count_only(pitch_constraints,location_constraints):
@@ -560,19 +779,31 @@ def pitch_solver_main_count_only(pitch_constraints,location_constraints):
                 if (i+1) % card_U == 0:
                     start_controls += card_U
                     end_controls += card_U
+        opt_policy["average_runs_per_inning"] = res.fun
+
         json.dump(opt_policy,open(filename,"w"),indent = 4)
     else:
         opt_policy = json.load(open(found_filename,"r"))
+    st.write(f"Policy solved || Average runs per inning: {opt_policy["average_runs_per_inning"]:0.3e}")
     return opt_policy
 
 def simulate_next_pitch_count_only(split,balls,strikes,n_sims,pitch_constraints,location_constraints):
     # solve with constraints
     count = f"({balls},{strikes})"
     opt_policy = pitch_solver_main_count_only(pitch_constraints,location_constraints)
-    fig = visualize_policy(opt_policy,split,count)
-    st.pyplot(fig)
+    # fig = visualize_policy(opt_policy,split,count)
+    # st.pyplot(fig)
     return 
 
+def solve_pitch_policy_count_outs_bases(pitch_constraints,location_constraints):
+    # solve with constraints
+    opt_policy = pitch_solver_main_count_outs_bases(pitch_constraints,location_constraints)
+    
+    return  opt_policy
+def visualize_pitch_policy(state,opt_policy):
+    fig = visualize_policy(opt_policy,state)
+    st.pyplot(fig)
+    return
 
 # functions
 
@@ -696,18 +927,6 @@ pitch_dict = {"FF":"4-Seam Fastball","SI":"Sinker (2-Seam)","FC":"Cutter",
           "IN":"Intentional Ball","PO":"Pitchout"}
 st.table(pitch_dict)
 st.divider()
-col1, col2, col3, col4 = st.columns([1,1,1,1])
-with col1:
-    split = st.selectbox("Split",["LHP vs LHH","LHP vs RHH","RHP vs LHH","RHP vs RHH"])
-with col2:
-    n_pitch_sims = st.number_input("Number of sim. pitches",min_value=1, max_value=1000)
-with col3:
-    n_balls = st.number_input("Number of balls",min_value=0, max_value=3)
-with col4:
-    n_strikes = st.number_input("Number of strikes",min_value=0, max_value=2)
-st.divider()
-split_dict = {"LHP vs LHH":"LL","LHP vs RHH":"LR","RHP vs LHH":"RL","RHP vs RHH":"RR"}
-split = split_dict[split]
 
 pit_col1,pit_col2,pit_col3,pit_col4,pit_col5 = st.columns([1,1,1,1,1])
 with pit_col1:
@@ -777,6 +996,36 @@ pitch_percentage_ub_state = {"FF":FF_perc/100,"FS":FS_perc/100,"FA":FA_perc/100,
 location_percentage_ub_total = {"1":loc1_perc/100,"2":loc2_perc/100,"3":loc3_perc/100,"4":loc4_perc/100,"5":loc5_perc/100,"6":loc6_perc/100,"7":loc7_perc/100,"8":loc8_perc/100,"9":loc9_perc/100,"11":loc11_perc/100,"12":loc12_perc/100,"13":loc13_perc/100,"14":loc14_perc/100}
 location_percentage_ub_state = {"1":loc1_perc/100,"2":loc2_perc/100,"3":loc3_perc/100,"4":loc4_perc/100,"5":loc5_perc/100,"6":loc6_perc/100,"7":loc7_perc/100,"8":loc8_perc/100,"9":loc9_perc/100,"11":loc11_perc/100,"12":loc12_perc/100,"13":loc13_perc/100,"14":loc14_perc/100}
 
+if not loc_sum_gt_100 or not pitch_sum_gt_100:
+    st.warning(f"Optimal policy infeasible\nThe sum of the location and pitch percentages needs to be greater than or equal to 100%")
+else:
+    if st.button("Solve Pitch Policy"):
+        st.session_state["opt_policy"] = solve_pitch_policy_count_outs_bases(pitch_constraints=(pitch_percentage_ub_total,pitch_percentage_ub_state),location_constraints=(location_percentage_ub_total,location_percentage_ub_state))
+    st.divider()
+    st.write(f"NOTE: If you change any of the constraints above, you will need to resolve the pitch policy above. Then, you can see the effects of these new constraints afterwards")
+    col1, col2, col3, col4 = st.columns([1,1,1,1])
+    with col1:
+        split = st.selectbox("Split",["LHP vs LHH","LHP vs RHH","RHP vs LHH","RHP vs RHH"])
+    with col2:
+        n_balls = st.number_input("Number of balls",min_value=0, max_value=3)
+    with col3:
+        n_strikes = st.number_input("Number of strikes",min_value=0, max_value=2)
+    with col4:
+        n_outs = st.number_input("Number of outs",min_value=0, max_value=2)
+    col_1,col_2,col_3 = st.columns([1,1,1])
+    with col_1:
+        on_1b = int(st.checkbox("Runner on 1B"))
+    with col_2:
+        on_2b = int(st.checkbox("Runner on 2B"))
+    with col_3:
+        on_3b = int(st.checkbox("Runner on 3B"))
+    st.divider()
+    split_dict = {"LHP vs LHH":"LL","LHP vs RHH":"LR","RHP vs LHH":"RL","RHP vs RHH":"RR"}
+    split = split_dict[split]
+    split2num = {"LL":0,"LR":1,"RL":2,"RR":3}
+    state = f"({n_balls},{n_strikes},{n_outs},{on_1b},{on_2b},{on_3b},{split2num[split]})"
+    # st.write(state)
+    # if st.button("Visualize Policy for Current State"):
+    visualize_pitch_policy(state,st.session_state["opt_policy"])
 
-if st.button("Simulate Pitch"):
-    simulate_next_pitch_count_only(split,n_balls,n_strikes,n_pitch_sims,pitch_constraints=(pitch_percentage_ub_total,pitch_percentage_ub_state),location_constraints=(location_percentage_ub_total,location_percentage_ub_state))
+
