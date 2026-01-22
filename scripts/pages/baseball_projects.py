@@ -652,10 +652,6 @@ def pitch_solver_main_count_outs_bases(pitch_constraints,location_constraints):
         b_eq = np.concat([b_eq1,b_eq2],axis = 0)
         A_ub = vstack((A_ub0,A_ub1,A_ub2,A_ub3))#np.concat([A_ub0,A_ub1,A_ub2,A_ub3],axis = 0)
         b_ub = np.concat([b_ub0,b_ub1,b_ub2,b_ub3],axis = 0)
-        st.write(A_eq.shape)
-        st.write(b_eq.shape)
-        st.write(A_ub.shape)
-        st.write(b_ub.shape)
         
         st.write("Solving LP")
         res = linprog(c,A_eq = A_eq,b_eq = b_eq,A_ub = A_ub, b_ub = b_ub, bounds = var_bounds)#
@@ -1066,7 +1062,7 @@ else:
 
 st.divider()
 st.subheader("Pitch Solver (Expanded)")
-st.write("This model now incorporates the number of outs, the runners on, and the split.")
+st.write("This model now incorporates the number of outs, the runners on, and the split. This solver will take more time as well.")
 st.write("NEED TO WRITE OUT FULL EQUATIONS FOR THIS SINCE IT IS DEFINED DIFFERENTLY")
 
 pit_col1,pit_col2,pit_col3,pit_col4,pit_col5 = st.columns([1,1,1,1,1])
