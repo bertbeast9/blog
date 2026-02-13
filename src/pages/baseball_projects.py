@@ -330,7 +330,7 @@ def get_state_action_transitions(start_date, end_date):
     
     event_2_state_dict = {"strikeout":"out","home_run":"home_run","foul_popout":"out","field_out":"out","single":"single","double":"double","triple":"triple","walk":"walk","hit_by_pitch":"hit_by_pitch","force_out":"out","grounded_into_double_play":"out","sac_bunt":"out","sac_fly":"out","field_error":"out","double_play":"out","triple_play":"out","fielders_choice":"out","triple_play":"out","sac_fly_double_play":"out","fielders_choice_out":"out","sac_bunt_double_play":"out","ejection":"out","truncated_pa":"out","catcher_interf":"out","strikeout_double_play":"out","intent_walk":"walk","game_advisory":"out"}
     event_2_bases_dict = {"out": -1, "walk": 0, "hit_by_pitch": 0, "single": 0, "double": 0, "triple": 0, "home_run": 0}
-    filename = f"./mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_state_trans_probs.pkl"
+    filename = f"./src/mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_state_trans_probs.pkl"
     if os.path.isfile(filename):
         (P, G, all_states, all_controls, all_locations, all_pitches, all_splits) = pickle.load(open(filename,"rb"))
     else:
@@ -458,7 +458,7 @@ def get_expected_runs_scored(O,curr_control,curr_state):
 def pitch_solver_main_count_outs_bases(pitch_constraints,location_constraints):
     start_date = datetime.datetime(2008,3,1)
     end_date = datetime.datetime(2025,11,1)
-    folder = "./mdls/count_outs_bases_opt_policies"
+    folder = "./src/mdls/count_outs_bases_opt_policies"
     found_filename = ""
     i = 0
     for i, filename in enumerate(os.listdir(folder)):
@@ -485,7 +485,7 @@ def pitch_solver_main_count_outs_bases(pitch_constraints,location_constraints):
         card_U = len(all_controls)
         card_vars = card_S*card_U
         st.write(f"Cardinality of states: {card_S}\nCardinality of controls: {card_U}\nTotal # of decision variables: {card_vars}")
-        filename = f"./mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_state_trans_probs_count_outs_bases.pkl"
+        filename = f"./src/mdls/{start_date.strftime("%Y_%m_%d")}_to_{end_date.strftime("%Y_%m_%d")}_state_trans_probs_count_outs_bases.pkl"
         if os.path.isfile(filename):
             st.write(f"Downloading data from {start_date.strftime("%Y_%m_%d")} to {end_date.strftime("%Y_%m_%d")}")
             O = json.load(open(filename,"r"))
@@ -682,7 +682,7 @@ def pitch_solver_main_count_outs_bases(pitch_constraints,location_constraints):
 def pitch_solver_main_count_only(pitch_constraints,location_constraints):
     start_date = datetime.datetime(2008,3,1)
     end_date = datetime.datetime(2025,11,1)
-    folder = "./mdls/count_only_opt_policies"
+    folder = "./src/mdls/count_only_opt_policies"
     found_filename = ""
     i = 0
     for i,filename in enumerate(os.listdir(folder)):
@@ -876,7 +876,7 @@ st.write("The control at our disposal is just the pitch and location that we cal
 "uncertainty in the pitch location (i.e. model a pitcher with less command of their " \
 "pitches). The pitch locations are defined as zones according to " \
 "[Baseball Savant](%s) and is depicted in Figure 1." % "https://baseballsavant.mlb.com/")
-st.image("./figures/Savant_Strikezone.png",width='content',caption="Zone definitions according Baseball Savant")
+st.image("./src/static/Savant_Strikezone.png",width='content',caption="Zone definitions according Baseball Savant")
 st.write("Every pitcher has a repertoire of pitches at their disposal. " \
 "We will assume for this example that our pitcher has three pitches that " \
 "they command well: a 4-Seam Fastball (FF), a Changeup (CH), and a Sweeper " \
