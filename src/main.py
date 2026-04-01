@@ -7,10 +7,11 @@ if __name__ == "__main__":
     about_me = st.Page("./pages/about_me.py", title="About Me", icon="👨")
     # cv = st.Page("./pages/cv.py", title="CV", icon="📖")
     baseball_projects = st.Page("./pages/baseball_projects.py",title="Baseball Projects", icon="⚾")
+    live_baseball_game_solver = st.Page("./pages/live_baseball_game_solver.py",title="Live Baseball Game Solver", icon="⚾")
     semiconductor_projects = st.Page("./pages/semiconductor_projects.py",title="Semiconductor Projects", icon="💻")
 
     # Set up navigation
-    pg = st.navigation([main_page, baseball_projects, semiconductor_projects, resume, about_me])
+    pg = st.navigation([main_page, live_baseball_game_solver, baseball_projects, semiconductor_projects, resume, about_me])
 
     # Run the selected page
     pg.run()
