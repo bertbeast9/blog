@@ -1,5 +1,5 @@
 import streamlit as st
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 import time
 import datetime
 import os
@@ -178,7 +178,7 @@ def update_game_states(game_solves):
                 home_runline_prob_sim = 100 * np.sum(final_dist[final_run_diffs - (home_run_diff) <= 0.0])
                 fig, ax = plt.subplots()
                 ax.bar(final_run_diffs, final_dist)
-                ax.vlines([games[game_idx]["game_state"]["game_odds"]["away_spread_line"]], colors = "b", ymin=0.0, ymax=0.3, label="away_spread_line")
+                ax.vlines([-1 * games[game_idx]["game_state"]["game_odds"]["away_spread_line"]], colors = "b", ymin=0.0, ymax=0.3, label="away_spread_line")
                 ax.vlines([games[game_idx]["game_state"]["game_odds"]["home_spread_line"]], colors = "r", ymin=0.0, ymax=0.3, label="home_spread_line")
                 ax.legend()
                 ax.set_title(f"Win BOV: ({games[game_idx]["game_state"]["game_odds"]["away_win"]:0.4}/{games[game_idx]["game_state"]["game_odds"]["home_win"]:0.4})\nWin SIM: ({away_win_prob_sim:0.4}/{home_win_prob_sim:0.4})\nSpread BOV: ([{games[game_idx]["game_state"]["game_odds"]["away_spread_line"]:0.2}] {games[game_idx]["game_state"]["game_odds"]["away_spread"]:0.4}/[{games[game_idx]["game_state"]["game_odds"]["home_spread_line"]:0.2}] {games[game_idx]["game_state"]["game_odds"]["home_spread"]:0.4})\nSpread SIM: ([{games[game_idx]["game_state"]["game_odds"]["away_spread_line"]:0.2}] {away_runline_prob_sim:0.4}/[{games[game_idx]["game_state"]["game_odds"]["home_spread_line"]:0.2}] {home_runline_prob_sim:0.4})")
