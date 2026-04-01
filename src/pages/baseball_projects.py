@@ -878,7 +878,7 @@ st.write("The control at our disposal is just the pitch and location that we cal
 "[Baseball Savant](%s) and is depicted in Figure 1." % "https://baseballsavant.mlb.com/")
 st.image("./src/static/Savant_Strikezone.png",width='content',caption="Zone definitions according Baseball Savant")
 st.write("Every pitcher has a repertoire of pitches at their disposal. " \
-"We will assume for this example that our pitcher has three pitches that " \
+"We will assume for this illustrative example that our pitcher has three pitches that " \
 "they command well: a 4-Seam Fastball (FF), a Changeup (CH), and a Sweeper " \
 "(ST). The control-space is then designated below.")
 st.latex(r'''
@@ -903,10 +903,10 @@ st.latex(r'''
     g(x_{k},u_k) = C_{x_{k}} \ \ \ \ \forall x_k \in S_a, u_{k} \in U
 ''')
 st.write("Now, every at bat is going to start in the state, $(0,0)$ " \
-"and progress into one of the 7 absorbing states. Each of these absorbing " \
+"and progress into one of the 7 absorbing states. Each of these absorbing states " \
 "will have an associated cost or penalty, $C_{x_{k}}$ for reaching that " \
 "state proportional to that state's effect on the fielding team's " \
-"likelihood of winning. With our dataset, we utilized calculated the " \
+"likelihood of winning. With our dataset, we calculated the " \
 "average runs scored after each of these events occurred. Furthermore, " \
 "we encouraged the optimal policy to seek more 'out' events by setting " \
 "$C_{x_{k}} = -1,x_{k}=out$. This MDP is clearly not " \
@@ -1066,7 +1066,7 @@ st.write("This model now incorporates the number of outs, the runners on, and th
 "Additionally, you will notice that some states do not occur with this policy. There will be an error thrown when these states do not occur. " \
 "These states are particularly bad like (3,0) counts with the bases loaded. An assumption of this model is that you can perfectly execute " \
 "every pitch so that you can avoid these 'hitter's counts'. This assumption will be relaxed later.")
-st.write("NEED TO WRITE OUT FULL EQUATIONS FOR THIS SINCE IT IS DEFINED DIFFERENTLY")
+
 
 pit_col1,pit_col2,pit_col3,pit_col4,pit_col5 = st.columns([1,1,1,1,1])
 with pit_col1:
