@@ -55,6 +55,7 @@ def simple_state_code_2_idx(state_code):
 
 
 def get_avg_solve_game():
+    print(os.getcwd())
     game_solve_filename = f"{"\\".join(os.getcwd().split("\\")[:-1])}\\mlb\\data\\mdls\\avg\\2008_01_01_to_2026_03_23__21_12_9_9__000000_R__000000_R__000000_R_000000_R_000000_R_000000_R_000000_R_000000_R_000000_R_000000_R_000000_R__000000_R_000000_R_000000_R_000000_R_000000_R_000000_R_000000_R_000000_R_000000_R__0__0__simple_game_solve.npz"
     if os.path.isfile(game_solve_filename) and os.access(game_solve_filename, os.R_OK):
         opened = False
@@ -149,19 +150,22 @@ st.sidebar.markdown("# Live Baseball Game Simluated Outcomes")
 
 #### DISCLAIMER ####
 st.write("DISCLAIMER: I am not liable for any gambling losses :)")
+if len(live_games) > 0:
+    option = st.selectbox(
+        "Which game do you want to watch?",
+        live_game_names,
+        placeholder="Select game to watch...",
+    )
 
-option = st.selectbox(
-    "Which game do you want to watch?",
-    live_game_names,
-    placeholder="Select game to watch...",
-)
-
-curr_game_pk = live_game_pks[live_game_names.index(option)]
-st.write(f"You are now watching the {option} game ({curr_game_pk})")
+    curr_game_pk = live_game_pks[live_game_names.index(option)]
+    st.write(f"You are now watching the {option} game ({curr_game_pk})")
 
 
 
-st.button('Update Game', on_click=click_button)
+    st.button('Update Game', on_click=click_button)
+else:
+    st.text("No live games at the moment...\nCome back later :)")
+
 
 if st.session_state.button:
     st.session_state["curr_game_state"] = update_game(st.session_state["curr_game_state"], curr_game_pk)
