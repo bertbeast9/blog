@@ -145,7 +145,8 @@ def update_game(game_state, gamePk=None):
 st.set_page_config(layout="wide")
 st.header("Live Baseball Game Simulated Outcomes")
 st.sidebar.markdown("# Live Baseball Game Simluated Outcomes")
-get_avg_solve_game()
+B = get_avg_solve_game()
+print(B)
 (live_games, live_game_names, live_game_pks) = get_todays_games()
 
 #### DISCLAIMER ####
