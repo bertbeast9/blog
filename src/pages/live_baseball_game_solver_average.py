@@ -11,8 +11,8 @@ from collections import OrderedDict
 import json
 from bs4 import BeautifulSoup
 import requests
-import asyncio
-import nest_asyncio
+# import asyncio
+# import nest_asyncio
 
 
 import streamlit as st
