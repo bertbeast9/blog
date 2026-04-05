@@ -56,7 +56,7 @@ def simple_state_code_2_idx(state_code):
 
 def get_avg_solve_game():
     print(os.getcwd())
-    game_solve_filename = "//static//simple_avg_game_solve.npz"
+    game_solve_filename = ".//src//static//simple_avg_game_solve.npz"
     if os.path.isfile(game_solve_filename) and os.access(game_solve_filename, os.R_OK):
         opened = False
         while not opened:
