@@ -120,7 +120,7 @@ print(game_files)
 games = []
 for (game_name, game_file) in zip(game_names, game_files):
     games.append({"game_name": game_name, "game_file": game_file, "away_team":game_name.split("_vs_")[0], "home_team":game_name.split("_vs_")[1]})
-game_cols = 5
+game_cols = 3
 game_rows = ((len(games) + (game_cols - 1)) // game_cols)
 
 game_solves = {}
@@ -134,9 +134,14 @@ def update_game_states(game_solves):
     for col_num in range(len(all_elements)):
         empty_rows.append(all_elements[col_num].empty())
     for game_idx, col in enumerate(empty_rows):
+        if game_idx >= len(games):
+            continue
         tile = col.container(height = 250, width = 500)
         game_info = read_last_line(games[game_idx]["game_file"])
-        if len(game_info) > 0:
+        if len(game_info) == 0:
+            tile.text(f"{games[game_idx]["game_name"].split("_vs_")[0]} vs {games[game_idx]["game_name"].split("_vs_")[1]}\nPREGAME")
+            continue
+        else:
             game_info = game_info.split(" INFO - ")[1]
             if "FINAL" in game_info:
                 game_info = game_info.split("|")
@@ -146,13 +151,16 @@ def update_game_states(game_solves):
             (away_team, home_team, inning_and_topbot, away_score, home_score, balls, strikes, outs, on1b, on2b, on3b, away_pitcher_id, home_pitcher_id, away_batter_idx, home_batter_idx), away_batting_ids, home_batting_ids = game_info[:15], game_info[15:24], game_info[24:33]
             games[game_idx]["game_state"] = {"inning": inning_and_topbot, "away_score": away_score, "home_score": home_score, "balls": balls, "strikes": strikes, "outs": outs, "on1b": on1b, "on2b": on2b, "on3b": on3b}#
             tile.text(f"{games[game_idx]["away_team"]} vs {games[game_idx]["home_team"]}\nINN: {games[game_idx]["game_state"]["inning"]} ({games[game_idx]["game_state"]["away_score"]} - {games[game_idx]["game_state"]["home_score"]})\nB: {games[game_idx]["game_state"]["balls"]}\tS: {games[game_idx]["game_state"]["strikes"]}\tO: {games[game_idx]["game_state"]["outs"]}\n1B: {games[game_idx]["game_state"]["on1b"]}\t2B: {games[game_idx]["game_state"]["on2b"]}\t3B: {games[game_idx]["game_state"]["on3b"]}")
-            real_inning = str(int(games[game_idx]["game_state"]["inning"].split(" ")[1]) - 1)
+            real_inning = str(np.minimum(8,int(games[game_idx]["game_state"]["inning"].split(" ")[1]) - 1))
             real_run_diff = str(int(games[game_idx]["game_state"]["away_score"]) - int(games[game_idx]["game_state"]["home_score"]))
             games[game_idx]["game_solve"] = "|".join([away_pitcher_id] + [home_pitcher_id] + away_batting_ids + home_batting_ids + [real_inning, real_run_diff])
             if games[game_idx]["game_solve"] not in game_solves.keys():
                 B = get_simple_solved_game(games[game_idx]["game_solve"])
                 if B is not None:
                     game_solves[games[game_idx]["game_solve"]] = B
+                else:
+                    tile.text(f"solving game...")
+            
             
         if "odds_file" not in games[game_idx].keys():
             odds_file = f"{log_dir}\\{games[game_idx]["game_name"]}_ODDS_info.log"
@@ -174,15 +182,19 @@ def update_game_states(game_solves):
                 # tile.bar_chart(dict([(x, y) for (x,y) in zip(final_run_diffs, final_dist)]))
                 away_win_prob_sim = 100 * np.sum(final_dist[np.argwhere(final_run_diffs > 0.0)])
                 home_win_prob_sim = 100 * np.sum(final_dist[np.argwhere(final_run_diffs < 0.0)])
-                away_runline_prob_sim = 100 * np.sum(final_dist[final_run_diffs + (away_run_diff) >= 0.0])
-                home_runline_prob_sim = 100 * np.sum(final_dist[final_run_diffs - (home_run_diff) <= 0.0])
-                fig, ax = plt.subplots()
-                ax.bar(final_run_diffs, final_dist)
-                ax.vlines([-1 * games[game_idx]["game_state"]["game_odds"]["away_spread_line"]], colors = "b", ymin=0.0, ymax=0.3, label="away_spread_line")
-                ax.vlines([games[game_idx]["game_state"]["game_odds"]["home_spread_line"]], colors = "r", ymin=0.0, ymax=0.3, label="home_spread_line")
-                ax.legend()
-                ax.set_title(f"Win BOV: ({games[game_idx]["game_state"]["game_odds"]["away_win"]:0.4}/{games[game_idx]["game_state"]["game_odds"]["home_win"]:0.4})\nWin SIM: ({away_win_prob_sim:0.4}/{home_win_prob_sim:0.4})\nSpread BOV: ([{games[game_idx]["game_state"]["game_odds"]["away_spread_line"]:0.2}] {games[game_idx]["game_state"]["game_odds"]["away_spread"]:0.4}/[{games[game_idx]["game_state"]["game_odds"]["home_spread_line"]:0.2}] {games[game_idx]["game_state"]["game_odds"]["home_spread"]:0.4})\nSpread SIM: ([{games[game_idx]["game_state"]["game_odds"]["away_spread_line"]:0.2}] {away_runline_prob_sim:0.4}/[{games[game_idx]["game_state"]["game_odds"]["home_spread_line"]:0.2}] {home_runline_prob_sim:0.4})")
-                tile.pyplot(fig)
+                away_runline_prob_sim = 100 * np.sum(final_dist[final_run_diffs + (away_run_diff) > 0.0])
+                home_runline_prob_sim = 100 * np.sum(final_dist[final_run_diffs - (home_run_diff) < 0.0])
+                # fig, ax = plt.subplots()
+                # ax.bar(final_run_diffs, final_dist)
+                # ax.vlines([-1 * games[game_idx]["game_state"]["game_odds"]["away_spread_line"]], colors = "b", ymin=0.0, ymax=0.3, label="away_spread_line")
+                # ax.vlines([games[game_idx]["game_state"]["game_odds"]["home_spread_line"]], colors = "r", ymin=0.0, ymax=0.3, label="home_spread_line")
+                # ax.grid(True)
+                # ax.set_ylim([0.0, 1.0])
+                # ax.legend()
+                df = pd.DataFrame(np.concat([final_run_diffs.reshape(-1,1), 100 * final_dist.reshape(-1, 1)],axis=1), columns = ["run_diff","prob"])
+                tile.text(f"Win BOV: ({games[game_idx]["game_state"]["game_odds"]["away_win"]:0.4}/{games[game_idx]["game_state"]["game_odds"]["home_win"]:0.4})\nWin SIM: ({away_win_prob_sim:0.4}/{home_win_prob_sim:0.4})\nSpread BOV: ([{games[game_idx]["game_state"]["game_odds"]["away_spread_line"]:0.2}] {games[game_idx]["game_state"]["game_odds"]["away_spread"]:0.4}/[{games[game_idx]["game_state"]["game_odds"]["home_spread_line"]:0.2}] {games[game_idx]["game_state"]["game_odds"]["home_spread"]:0.4})\nSpread SIM: ([{games[game_idx]["game_state"]["game_odds"]["away_spread_line"]:0.2}] {away_runline_prob_sim:0.4}/[{games[game_idx]["game_state"]["game_odds"]["home_spread_line"]:0.2}] {home_runline_prob_sim:0.4})")
+                tile.bar_chart(df,x = "run_diff", y="prob", x_label = "run difference", y_label = "prob. [%]")
+                # tile.pyplot(fig)
                 
 
 
