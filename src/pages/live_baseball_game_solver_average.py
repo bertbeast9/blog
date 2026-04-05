@@ -82,7 +82,7 @@ if "avg_game_solve" not in st.session_state:
 
 
 def get_todays_games():
-    schedule_url = f"https://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&date={datetime.datetime.now().strftime("%Y-%m-%d")}"
+    schedule_url = f"https://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&date={(datetime.datetime.now() - datetime.timedelta(days = 1)).strftime("%Y-%m-%d")}"
     content = json.loads(BeautifulSoup(requests.get(schedule_url, timeout=60).text, "html.parser").get_text())
     live_games = [x for x in content["dates"][0]["games"] if x["status"]["codedGameState"] == "I"]
     live_game_names = [f"{x["teams"]["away"]["team"]["name"]} vs {x["teams"]["home"]["team"]["name"]}" for x in live_games]
