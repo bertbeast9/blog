@@ -171,7 +171,7 @@ if st.session_state.button:
     # st.write(st.session_state["curr_game_state"])
     
     curr_simple_state_code = (int(st.session_state["curr_game_state"]["away_score"]) - int(st.session_state["curr_game_state"]["home_score"]) + ((simple_state_space_cardinality["run_diff"] - 1) // 2), \
-                              int(st.session_state["curr_game_state"]["inning"]), int(st.session_state["curr_game_state"]["topbot"] in ["Middle","Bottom"]), \
+                              int(st.session_state["curr_game_state"]["inning"]) - 1, int(st.session_state["curr_game_state"]["topbot"] in ["Middle","Bottom"]), \
                                 int(st.session_state["curr_game_state"]["away_curr_batter_idx"]), int(st.session_state["curr_game_state"]["home_curr_batter_idx"]), \
                                     int(st.session_state["curr_game_state"]["outs"]), int(st.session_state["curr_game_state"]["on_1b"]), \
                                         int(st.session_state["curr_game_state"]["on_2b"]), int(st.session_state["curr_game_state"]["on_3b"]))
