@@ -9,10 +9,10 @@ if __name__ == "__main__":
     baseball_projects = st.Page("./pages/baseball_projects.py",title="Baseball Projects", icon="⚾")
     live_baseball_game_solver_personal = st.Page("./pages/live_baseball_game_solver_personal.py",title="Live Baseball Game Solver (My Model)", icon="⚾")
     live_baseball_game_solver_average = st.Page("./pages/live_baseball_game_solver_average.py",title="Live Baseball Average Game Solver", icon="⚾")
-    semiconductor_projects = st.Page("./pages/semiconductor_projects.py",title="Semiconductor Projects", icon="💻")
+    # semiconductor_projects = st.Page("./pages/semiconductor_projects.py",title="Semiconductor Projects", icon="💻")
 
     # Set up navigation
-    pg = st.navigation([live_baseball_game_solver_average, baseball_projects, semiconductor_projects, resume, about_me])#main_page, , live_baseball_game_solver_personal
+    pg = st.navigation([live_baseball_game_solver_average, baseball_projects, resume, about_me])#main_page, semiconductor_projects, , live_baseball_game_solver_personal
 
     # Run the selected page
     pg.run()
