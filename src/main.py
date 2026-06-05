@@ -11,7 +11,7 @@ if __name__ == "__main__":
     # semiconductor_projects = st.Page("./pages/semiconductor_projects.py",title="Semiconductor Projects", icon="💻")
 
     # Set up navigation
-    pg = st.navigation([live_baseball_game_solver_average, pitch_solver, about_me])#main_page, semiconductor_projects, , live_baseball_game_solver_personal
+    pg = st.navigation([pitch_solver, live_baseball_game_solver_average, about_me])#main_page, semiconductor_projects, , live_baseball_game_solver_personal
 
     # Run the selected page
     pg.run()
