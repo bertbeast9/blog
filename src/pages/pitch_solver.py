@@ -849,7 +849,7 @@ st.sidebar.markdown("# Baseball Projects")
 st.sidebar.subheader("Pitch Solver (Count Only)")
 st.sidebar.subheader("Pitch Solver (Expanded)")
 st.subheader("Pitch Solver (Count Only)")
-st.write("Okay, let's start with the problem at hand. A begin decision before each " \
+st.write("A begin decision before each " \
 "pitch is what pitch to throw. We aim to model this as a Markov Decision Process (MDP) " \
 "with the states being the state of the game. As a starting point, we are only going " \
 "to consider the count as the state of the at-bat. Future work will expand the state-space " \
@@ -894,7 +894,7 @@ st.write("Of course, the control actions of the pitcher once they have " \
 st.latex(r'''
     x_{0} = (0,0) \\
     x_{k+1} = f(x_{k},u_{k},w_{k}) = P(x_{k+1}|x_{k},u_{k},w_{k}) \\
-    P(x_{k+1}|x_{k},u_{k},w_{k}) = \frac{\text{number of transitions from \(x_{k}\) to \(x_{k+1}\) given \(u_{k}\) was called}}{\text{number of occurrences in which game was in state \(x_{k}\) and \(u_{k}\) was called}}  \ \ \ \ \forall x_{k} \in S_t, u_{k} \in U(x_{k})\\
+    P(x_{k+1}|x_{k},u_{k},w_{k}) = \frac{\text{number of transitions from \(x_{k}\) to \(x_{k+1}\) given \(u_{k}\) was called}}{\text{number of occurrences in which game was in state \(x_{k}\) and \(u_{k}\) was called}}  \ \ \ \ \forall x_{k+1} \in S_t, u_{k} \in U(x_{k})\\
     P(x_{k}|x_{k},u_{k},w_{k}) = 1 \ \ \ \ \forall x_{k} \in S_a, u_{k} \in U(x_{k})\\
 ''')
 st.write("The one-step cost is defined by")
