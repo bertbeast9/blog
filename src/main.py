@@ -6,13 +6,13 @@ if __name__ == "__main__":
     resume = st.Page("./pages/resume.py", title="Resume", icon="👨‍🎓")
     about_me = st.Page("./pages/about_me.py", title="About Me", icon="👨")
     # cv = st.Page("./pages/cv.py", title="CV", icon="📖")
-    baseball_projects = st.Page("./pages/baseball_projects.py",title="Baseball Projects", icon="⚾")
-    live_baseball_game_solver_personal = st.Page("./pages/live_baseball_game_solver_personal.py",title="Live Baseball Game Solver (My Model)", icon="⚾")
+    pitch_solver = st.Page("./pages/pitch_solver.py",title="Pitch Solver", icon="⚾")
+    # live_baseball_game_solver_personal = st.Page("./pages/live_baseball_game_solver_personal.py",title="Live Baseball Game Solver (My Model)", icon="⚾")
     live_baseball_game_solver_average = st.Page("./pages/live_baseball_game_solver_average.py",title="Live Baseball Average Game Solver", icon="⚾")
     # semiconductor_projects = st.Page("./pages/semiconductor_projects.py",title="Semiconductor Projects", icon="💻")
 
     # Set up navigation
-    pg = st.navigation([live_baseball_game_solver_average, baseball_projects, resume, about_me])#main_page, semiconductor_projects, , live_baseball_game_solver_personal
+    pg = st.navigation([live_baseball_game_solver_average, pitch_solver, resume, about_me])#main_page, semiconductor_projects, , live_baseball_game_solver_personal
 
     # Run the selected page
     pg.run()
