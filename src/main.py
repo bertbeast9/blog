@@ -7,9 +7,10 @@ if __name__ == "__main__":
     pitch_solver = st.Page("./pages/pitch_solver.py",title="Pitch Solver", icon="⚾")
     live_baseball_game_solver_average = st.Page("./pages/live_baseball_game_solver_average.py",title="Live Baseball Average Game Solver", icon="⚾")
     photolithography = st.Page("./pages/photolithography.py", title="Photolithography Control", icon="🔦")
+    nanoimprintlithography = st.Page("./pages/nanoimprintlithography.py", title="Nano Imprint Lithography Control", icon="🔦")
 
     # Set up navigation
-    pg = st.navigation([home_page, pitch_solver, live_baseball_game_solver_average, photolithography, about_me])
+    pg = st.navigation([home_page, pitch_solver, live_baseball_game_solver_average, photolithography, nanoimprintlithography, about_me])
 
     # Run the selected page
     pg.run()
