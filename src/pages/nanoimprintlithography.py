@@ -3,6 +3,25 @@ import json
 # import sys
 # st.write(sys.path)
 st.header ("Nano Imprint Lithography", divider=True)
+
+st.subheader("Questions/Requests for CNT", divider=True)
+st.markdown("-Would like to know the order in which the fields were actually cured?")
+st.markdown("--")
+st.markdown("-How do you generate $\\vec{u}$ for the next field?")
+st.markdown("--Not field-by-field, run-by-run. Estimate bias, and push in other direction")
+st.markdown("-Do you have the true $\\vec{u}$ sent to the tool?")
+st.markdown("--")
+st.markdown("-What are the bounds for all inputs, if any?")
+st.markdown("--")
+st.markdown("-We would like the model for how the pin forces relate to the overlay errors?")
+st.markdown("--")
+st.markdown("-How was outlier limit [20 nm] decided in the MatLab code? Based on physics or heuristics?")
+st.markdown("--")
+st.markdown("-Is $\\Phi^{(1)}$ a global model for all fields on the wafer? How was this model identified?")
+st.markdown("--Full field is the same, partial field has a different field")
+st.markdown("-What are the reasons for the edge markers generally having higher errors? Does weighting these outer markers' errors more make sense?")
+st.markdown("--")
+
 st.sidebar.markdown("# Nano Imprint Lithography")
 st.subheader("Problem Overview",divider=True)
 st.image("./src/figures/NIL_Schematic.jpg", caption="A diagram of the nanoimprint lithography process [https://global.canon/en/technology/nil-2023.html]")
@@ -20,7 +39,7 @@ st.latex("\\vec{u}^{(1)} \\in \\mathbb{R}^{3 \\text{x} 1} = \\left[ \\begin{matr
 st.latex("\\vec{o} = \\left[ \\begin{matrix} o_x(X_1,Y_1,x_1,y_1) \\newline o_y(X_1,Y_1,x_1,y_1) \\newline \\vdots \\newline o_y(X_{n_m},Y_{n_m},x_{n_m},y_{n_m}) \\end{matrix} \\right] = \\Phi^{(1)} \\vec{u}^{(1)} + \\vec{r}")
 
 st.subheader("Tool Inputs: Template Pin Force Inputs",divider=True)
-st.markdown("For further control over the resulting marker locations, the template can be deformed by 16 pin actuators, seen below. However, the following equations must satisfy the balance equations for static equilibrium.")
+st.markdown("For further control over the resulting marker locations, the template can be deformed by 16 pin actuators, seen below. However, the following equations must satisfy the balance equations for static equilibrium. Furthermore, we require that the pins do not impart a force above a certain bound, $b_{u}$, on the template in order to protect the template from damage.")
 st.latex("\\vec{u}^{(2)} \\in \\mathbb{R}^{16 \\text{x} 1} = \\left[ \\begin{matrix} \\text{pin force 1 [N]} \\newline \\text{pin force 2 [N]} \\newline  \\vdots \\newline \\text{pin force 16 [N]} \\end{matrix} \\right] \\newline" \
 "\\Phi^{(2)} \\in \\mathbb{R}^{2 n_m \\text{x} 16}")
 st.latex("\\vec{o} = \\left[ \\begin{matrix} o_x(X_1,Y_1,x_1,y_1) \\newline o_y(X_1,Y_1,x_1,y_1) \\newline \\vdots \\newline o_y(X_{n_m},Y_{n_m},x_{n_m},y_{n_m}) \\end{matrix} \\right] = \\Phi^{(2)} \\vec{u}^{(2)} + \\vec{r}")
@@ -32,23 +51,24 @@ st.image("./src/figures/Template_Pin_Forces.png", caption = "Diagram of the pin 
 
 
 st.subheader("Tool Inputs: Template Heat Inputs",divider=True)
-st.markdown("The template can further be deformed via a grid of laser inputs that will head the template. This control input is rather interesting in that each laser must pulse their pixel of the grid to achieve a desired temperature for the template. This model is likely not linear, but let's assume that we can linearize it.")
-st.latex("\\vec{u}^{(3)} \\in \\mathbb{R}^{n_m \\text{x} 1} = \\left[ \\begin{matrix} \\text{grid point temp. 1 [\\degree C]} \\newline \\text{grid point temp. 2 [\\degree C]} \\newline  \\vdots \\newline \\text{grid point temp. $n_h$ [\\degree C]} \\end{matrix} \\right] \\newline" \
-"\\Phi^{(3)} \\in \\mathbb{R}^{2 n_m \\text{x} n_m}")
+st.markdown("The template can further be deformed via a grid of laser inputs that will heat the template. This control input is rather interesting in that each laser *must pulse their pixel of the grid* to achieve a desired temperature for the template. This model is likely not linear, but let's assume that we can linearize it.")
+st.latex("\\vec{u}^{(3)} \\in \\mathbb{R}^{n_h \\text{x} 1} = \\left[ \\begin{matrix} \\text{grid point temp. 1 [\\degree C]} \\newline \\text{grid point temp. 2 [\\degree C]} \\newline  \\vdots \\newline \\text{grid point temp. $n_h$ [\\degree C]} \\end{matrix} \\right] \\newline" \
+"\\Phi^{(3)} \\in \\mathbb{R}^{2 n_m \\text{x} n_h}")
 st.latex("\\vec{o} = \\left[ \\begin{matrix} o_x(X_1,Y_1,x_1,y_1) \\newline o_y(X_1,Y_1,x_1,y_1) \\newline \\vdots \\newline o_y(X_{n_m},Y_{n_m},x_{n_m},y_{n_m}) \\end{matrix} \\right] = \\Phi^{(3)} \\vec{u}^{(3)} + \\vec{r}")
 
-st.subheader("Questions/Requests for CNT", divider=True)
-st.markdown("-Would like to know the order in which the fields were actually cured")
-st.markdown("-How do you generate $\\vec{u}$ for the next field?")
-st.markdown("-Do you have the true $\\vec{u}$ sent to the tool?")
-st.markdown("-What are the bounds for all inputs, if any?")
-st.markdown("-We would like the model for how the pin forces relate to the overlay errors?")
-st.markdown("-How was outlier limit [20 nm] decided in the MatLab code? Based on physics or heuristics?")
-st.markdown("-Is $\\Phi^{(1)}$ a global model for all fields on the wafer? How was this model identified?")
-st.markdown("-What are the reasons for the edge markers generally having higher errors? Does weighting these outer markers' errors more make sense?")
+st.subheader("Starter Model", divider = True)
+st.markdown("Utilizing this model, we aim to model the bias terms and correct them, field-by-field. This model considers the previous bias from the last field.")
+st.latex("\\vec{o}_{i} \\sim \\text{overlay errors for field } i")
+st.latex("\\vec{\\chi}_{i} = A_1(\\vec{\\theta}) \\vec{\\chi}_{i-1} + \\vec{q}_{i} || \\vec{q}_{i,j,k} \\sim \\mathcal{N}(\\vec{0}, Q_{j,k}(\\vec{\\theta}))")
+st.latex("\\vec{o}_{i,j,k} = \\vec{\\chi}_{i,j,k} + \\Phi_{i,j,k} \\vec{u}_{i,j,k} + \\vec{r}_{i,j,k} || \\vec{r}_{i,j,k} \\sim \\mathcal{N}(\\vec{0}, R_{j,k}(\\vec{\\theta}))")
+st.markdown("However, I don't have access to that much data. So, I'll simplify the model.")
+st.latex("\\vec{o}_{i} \\sim \\text{overlay errors for wafer } i")
+st.latex("\\vec{\\chi}_{i} = A(\\vec{\\theta}) \\vec{\\chi}_{i-1} + \\vec{q}_{i} || \\vec{q}_{i} \\sim \\mathcal{N}(\\vec{0}, Q(\\vec{\\theta}))")
+st.latex("\\vec{o}_{i} = \\vec{\\chi}_{i} + \\Phi \\vec{u}_{i} + \\vec{r}_{i} || \\vec{r}_{i} \\sim \\mathcal{N}(\\vec{0}, R(\\vec{\\theta}))")
 
 
-st.markdown("Utilizing this model, we aim to model the bias terms and correct them, wafer-by-wafer. Ideally, with enough data, we would be able to utilize the full model below. This model considers the previous bias from the last field and the last wafer at the same field.")
+st.subheader("Full Model", divider = True)
+st.markdown("Utilizing this model, we aim to model the bias terms and correct them, wafer-by-wafer. Ideally, with enough data, we would be able to utilize the full model below. This model considers the previous bias from the last wafer of the same wafer, the field, the last wafer at the same field.")
 st.latex("\\vec{o}_{i,j,k} \\sim \\text{overlay errors for wafer } i \\text{, layer } j \\text{, field } k")
 st.latex("\\vec{\\chi}_{i,j,k} = A_1(\\vec{\\theta}) \\vec{\\chi}_{i,j-1,k} + A_2(\\vec{\\theta}) \\vec{\\chi}_{i,j,k-1} + \\vec{q}_{i,j,k} || \\vec{q}_{i,j,k} \\sim \\mathcal{N}(\\vec{0}, Q_{j,k}(\\vec{\\theta}))")
 st.latex("\\vec{o}_{i,j,k} = \\vec{\\chi}_{i,j,k} + \\Phi_{i,j,k} \\vec{u}_{i,j,k} + \\vec{r}_{i,j,k} || \\vec{r}_{i,j,k} \\sim \\mathcal{N}(\\vec{0}, R_{j,k}(\\vec{\\theta}))")
@@ -56,10 +76,3 @@ st.markdown("However, I don't have access to that much data. So, I'll simplify t
 st.latex("\\vec{o}_{i} \\sim \\text{overlay errors for wafer } i")
 st.latex("\\vec{\\chi}_{i} = A(\\vec{\\theta}) \\vec{\\chi}_{i-1} + \\vec{q}_{i} || \\vec{q}_{i} \\sim \\mathcal{N}(\\vec{0}, Q(\\vec{\\theta}))")
 st.latex("\\vec{o}_{i} = \\vec{\\chi}_{i} + \\Phi \\vec{u}_{i} + \\vec{r}_{i} || \\vec{r}_{i} \\sim \\mathcal{N}(\\vec{0}, R(\\vec{\\theta}))")
-st.markdown("We will assume that we have control over the inputs that will allow the following")
-st.latex("\\Phi \\in \\mathbb{R}^{(2 \\text{x} n_m) \\text{x} 33} = \\left[ \\begin{matrix} 1 && 0 && X_1 && 0 && Y_1 && 0 && X_1^{2} && 0 && X_1 Y_1 && 0 && Y_1^{2} && 0 && X_1^{3} && 0 && X_1^{2} Y_1 && 0 && X_1 Y_1^{2} && 0 && Y_1^{3} && 0 && x_1 && 0 && y_1 && 0 && x_1^{2} && 0 && y_1^{2} && 0 && x_1^{3} && 0 && y_1^{3} && 0 && 0\\newline"
-                                         "0 && 1 && 0 && X_1 && 0 && Y_1 && 0 && X_1^{2} && 0 && X_1 Y_1 && 0 && Y_1^{2} && 0 && X_1^{3} && 0 && X_1^{2} Y_1 && 0 && X_1 Y_1^{2} && 0 && Y_1^{3} && 0 && x_1 && 0 && y_1 && 0 && x_1^{2} && 0 && x_1 y_1 && 0 && y_1^{2} && 0 && x_1 y_1^{2} && y_1^{3}\\newline"
-                                         " && && && && && && \\vdots \\newline"
-                                         "0 && 1 && 0 && X_{n_m} && 0 && Y_{n_m} && 0 && X_{n_m}^{2} && 0 && X_{n_m} Y_{n_m} && 0 && Y_{n_m}^{2} && 0 && X_{n_m}^{3} && 0 && X_{n_m}^{2} Y_{n_m} && 0 && X_{n_m} Y_{n_m}^{2} && 0 && Y_{n_m}^{3} && 0 && x_{n_m} && 0 && y_{n_m} && 0 && x_{n_m}^{2} && 0 && x_{n_m} y_{n_m} && 0 && y_{n_m}^{2} && 0 && x_{n_m} y_{n_m}^{2} && y_{n_m}^{3}\\newline"
-                                         "\\end{matrix} \\right]")
-st.latex("\\vec{u}_i \\in \\mathbb{R}^{33 \\text{x} 1} = \\left[ \\begin{matrix} C_{x,X_i^{0} Y_i^{0}} \\newline  C_{y,X_i^{0} Y_i^{0}} \\newline C_{x,X_i^{1} Y_i^{0}} \\newline C_{y,X_i^{1} Y_i^{0}} \\newline C_{x,X_i^{0} Y_i^{1}} \\newline C_{y,X_i^{0} Y_i^{1}} \\newline C_{x,X_i^{2} Y_i^{0}} \\newline C_{y,X_i^{2} Y_i^{0}} \\newline C_{x,X_i^{1} Y_i^{1}} \\newline C_{y,X_i^{1} Y_i^{1}} \\newline C_{x,X_i^{0} Y_i^{2}} \\newline C_{y,X_i^{0} Y_i^{2}} \\newline C_{x,X_i^{3} Y_i^{0}} \\newline C_{y,X_i^{3} Y_i^{0}} \\newline C_{x,X_i^{2} Y_i^{1}} \\newline C_{y,X_i^{2} Y_i^{1}} \\newline C_{x,X_i^{1} Y_i^{2}} \\newline C_{y,X_i^{1} Y_i^{2}} \\newline C_{x,X_i^{0} Y_i^{3}} \\newline C_{y,X_i^{0} Y_i^{3}} \\newline C_{x,x_i^{1} y_i^{0}} \\newline C_{y,x_i^{1} y_i^{0}} \\newline C_{x,x_i^{0} y_i^{1}} \\newline C_{y,x_i^{0} y_i^{1}} \\newline C_{x,x_i^{2} y_i^{0}} \\newline C_{y,x_i^{2} y_i^{0}} \\newline C_{x,x_i^{0} y_i^{2}} \\newline C_{y,x_i^{1} y_i^{1}} \\newline C_{x,x_i^{3} y_i^{0}} \\newline C_{y,x_i^{0} y_i^{2}} \\newline C_{x,x_i^{0} y_i^{3}} \\newline C_{y,x_i^{1} y_i^{2}} \\newline C_{y,x_i^{0} y_i^{3}} \\newline \\end{matrix} \\right]")
