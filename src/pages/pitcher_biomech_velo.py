@@ -214,9 +214,11 @@ if not os.path.isfile(pitch_cv_results_file_name):
             pitch_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test_sel, y_test))
 
             # print(pitch_cv_results)
-    pickle.dump((pitch_cv_results, pitch_cv_base_ests), open(pitch_cv_results_file_name,"wb"))
+    with open(pitch_cv_results_file_name,"wb") as f:
+        pickle.dump((pitch_cv_results, pitch_cv_base_ests), f)
 else:
-    (pitch_cv_results, pitch_cv_base_ests) = pickle.load(open(pitch_cv_results_file_name,"rb"))
+    with open(pitch_cv_results_file_name,"rb") as f:
+        (pitch_cv_results, pitch_cv_base_ests) = pickle.load(f)
 for base_est_name, base_est in pitch_cv_base_ests:
     print(f"{base_est_name}\nTraining $R^2$: {np.mean(pitch_cv_results[base_est_name]["training"])}% (+/-) {np.std(pitch_cv_results[base_est_name]["training"])}" \
             f"\nTesting $R^2$: {np.mean(pitch_cv_results[base_est_name]["testing"])}% (+/-) {np.std(pitch_cv_results[base_est_name]["testing"])}")
@@ -287,9 +289,11 @@ if not os.path.isfile(pitcher_cv_results_file_name):
             pitcher_cv_results[base_est_name]["training"].append(100 * base_est.score(X_train_sel, y_train))
             pitcher_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test_sel, y_test))
             # print(pitcher_cv_results)
-    pickle.dump((pitcher_cv_results, pitcher_cv_base_ests), open(pitcher_cv_results_file_name,"wb"))
+    with open(pitcher_cv_results_file_name,"wb") as f:
+        pickle.dump((pitcher_cv_results, pitcher_cv_base_ests), f)
 else:
-    (pitcher_cv_results, pitcher_cv_base_ests) = pickle.load(open(pitcher_cv_results_file_name,"rb"))
+    with open(pitcher_cv_results_file_name,"rb") as f:
+        (pitcher_cv_results, pitcher_cv_base_ests) = pickle.load(f)
     
 for base_est_name, base_est in pitcher_cv_base_ests:
     print(f"{base_est_name}\nTraining $R^2$: {np.mean(pitcher_cv_results[base_est_name]["training"])}% (+/-) {np.std(pitcher_cv_results[base_est_name]["training"])}" \
@@ -354,9 +358,11 @@ if not os.path.isfile(prediction_results_file_name):
         pitch_cv_predictions[f"{base_est_name} predicted velocities"] = sorted([(x,np.mean(tmp[pitcher_ids == x])) for x in np.unique(pitcher_ids)], key = lambda x: x[1], reverse = True)
         tmp = pd.Series([x[1] for x in pitch_cv_predictions[f"{base_est_name} predicted velocities"]], index = [x[0] for x in pitch_cv_predictions[f"{base_est_name} predicted velocities"]])
         df_cv_predictions[f"{base_est_name} predicted velocities"] = tmp
-    pickle.dump((df_cv_predictions, pred_cv_base_ests), open(prediction_results_file_name, "wb"))
+    with open(prediction_results_file_name, "wb") as f:
+        pickle.dump((df_cv_predictions, pred_cv_base_ests), f)
 else:
-    (df_cv_predictions, pred_cv_base_ests) = pickle.load(open(prediction_results_file_name, "rb"))
+    with open(prediction_results_file_name, "rb") as f:
+        (df_cv_predictions, pred_cv_base_ests) = pickle.load(f)
 
 df_cv_predictions.index.name = "pitcher_id"
 
