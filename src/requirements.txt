@@ -1,3 +1,4 @@
 scipy
 matplotlib
 bs4
+scikit-learn
