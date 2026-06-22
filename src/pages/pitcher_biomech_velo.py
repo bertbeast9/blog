@@ -91,7 +91,7 @@ if streamlit_on:
     st.subheader("Testing Framework", divider=True)
     st.markdown("Ultimately, the powers-that-be have the true fastball velocities for the _testing_ dataset. So, I aim to validate " \
     "and compare each of these models using some k-fold cross-validation of the _training_ dataset. To make this testing more realistic, " \
-    "I am not going to shuffle across pitches but shuffle pitchers. I want the model to see brand new pitchers to assess " \
+    "I am not only going to shuffle across pitches but shuffle across pitchers as well. I want the model to see brand new pitchers to assess " \
     "the model's generalizability.")
     st.subheader("Dataset Breakdown", divider=True)
 
@@ -244,9 +244,9 @@ for kth_fold, (train_data, test_data) in enumerate(cv_obj):
     y_test = np.clip(y_test, -3, 3)
     pitcher_cv_base_ests = [
         ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
-        # ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        # ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        # ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
+        ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+        ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+        ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
     ]
     fold_results =  []
     for base_est_name, base_est in pitcher_cv_base_ests:
@@ -319,7 +319,6 @@ for base_est_name, base_est in pitch_cv_base_ests:
     sfs.fit(X, y)
     sel_col_idx = sfs.get_support()
     selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
-    print(selected_features)
     X = sfs.transform(X)
     X_pred = sfs.transform(X_pred)
     base_est.fit(X, y)
@@ -333,6 +332,6 @@ df_cv_predictions.index.name = "pitcher_id"
 if streamlit_on:
     st.subheader("2025 FCL Predicted Velocities", divider=True)
     st.dataframe(df_cv_predictions)
-    st.markdown("Player ID 91 is predicted to be the fastest throwing pitcher according the Random Forest Regression model which was the most accurate model in the pitch cross validation test.")
+    st.markdown("Player ID 91 is predicted to have the highest average fastball velocity according the Random Forest Regression model which was the most accurate model in the pitch cross validation test.")
 
 
