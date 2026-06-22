@@ -11,8 +11,8 @@ from sklearn import set_config
 set_config(enable_metadata_routing=True)
 
 streamlit_on = True
-sfs_tol = 0.01
-k_folds = 5
+sfs_tol = 0.1
+k_folds = 2
 
 
 if streamlit_on:
@@ -176,8 +176,8 @@ for kth_fold, (train_data, test_data) in enumerate(cv_obj):
     pitch_cv_base_ests = [
         ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
         ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
+        # ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+        # ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
     ]
     fold_results =  []
     for base_est_name, base_est in pitch_cv_base_ests:
@@ -195,18 +195,18 @@ for kth_fold, (train_data, test_data) in enumerate(cv_obj):
         sfs.fit(X_train, y_train)
         sel_col_idx = sfs.get_support()
         selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
-        # print(selected_features)
-        X_train = sfs.transform(X_train)
-        X_test = sfs.transform(X_test)
-        base_est.fit(X_train, y_train)
+        print(selected_features)
+        X_train_sel = sfs.transform(X_train)
+        X_test_sel = sfs.transform(X_test)
+        base_est.fit(X_train_sel, y_train)
         if kth_fold == 0:
             pitch_cv_results[base_est_name] = dict()
             pitch_cv_results[base_est_name]["selected_features"] = []
             pitch_cv_results[base_est_name]["training"] = []
             pitch_cv_results[base_est_name]["testing"] = []
         pitch_cv_results[base_est_name]["selected_features"].append(selected_features)
-        pitch_cv_results[base_est_name]["training"].append(100 * base_est.score(X_train, y_train))
-        pitch_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test, y_test))
+        pitch_cv_results[base_est_name]["training"].append(100 * base_est.score(X_train_sel, y_train))
+        pitch_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test_sel, y_test))
 
         # print(pitch_cv_results)
 
@@ -218,6 +218,9 @@ if streamlit_on:
     st.subheader("Pitch Cross Validation Raw Results",divider=True)
     st.json(pitch_cv_results)
 
+X = train_df[feature_cols].values
+y = train_df["velocity"].values
+pitcher_ids = train_df["pitcher_id"].values
 ### Pitcher Cross Validation
 pitcher_cv_results = {}
 cv_obj = split_data_by_pitcher_id(pitcher_ids, k_folds = k_folds)
@@ -245,8 +248,8 @@ for kth_fold, (train_data, test_data) in enumerate(cv_obj):
     pitcher_cv_base_ests = [
         ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
         ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
+        # ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+        # ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
     ]
     fold_results =  []
     for base_est_name, base_est in pitcher_cv_base_ests:
@@ -261,18 +264,18 @@ for kth_fold, (train_data, test_data) in enumerate(cv_obj):
         sfs.fit(X_train, y_train)
         sel_col_idx = sfs.get_support()
         selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
-        # print(selected_features)
-        X_train = sfs.transform(X_train)
-        X_test = sfs.transform(X_test)
-        base_est.fit(X_train, y_train)
+        print(selected_features)
+        X_train_sel = sfs.transform(X_train)
+        X_test_sel = sfs.transform(X_test)
+        base_est.fit(X_train_sel, y_train)
         if kth_fold == 0:
             pitcher_cv_results[base_est_name] = dict()
             pitcher_cv_results[base_est_name]["selected_features"] = []
             pitcher_cv_results[base_est_name]["training"] = []
             pitcher_cv_results[base_est_name]["testing"] = []
         pitcher_cv_results[base_est_name]["selected_features"].append(selected_features)
-        pitcher_cv_results[base_est_name]["training"].append(100 * base_est.score(X_train, y_train))
-        pitcher_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test, y_test))
+        pitcher_cv_results[base_est_name]["training"].append(100 * base_est.score(X_train_sel, y_train))
+        pitcher_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test_sel, y_test))
         # print(pitcher_cv_results)
     
 for base_est_name, base_est in pitcher_cv_base_ests:
@@ -319,10 +322,11 @@ for base_est_name, base_est in pitch_cv_base_ests:
     sfs.fit(X, y)
     sel_col_idx = sfs.get_support()
     selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
-    X = sfs.transform(X)
-    X_pred = sfs.transform(X_pred)
-    base_est.fit(X, y)
-    tmp = scaler.inverse_transform(base_est.predict(X_pred).reshape(-1,1)).reshape(-1,)
+    print(selected_features)
+    X_sel = sfs.transform(X)
+    X_pred_sel = sfs.transform(X_pred)
+    base_est.fit(X_sel, y)
+    tmp = scaler.inverse_transform(base_est.predict(X_pred_sel).reshape(-1,1)).reshape(-1,)
     pitch_cv_predictions[f"{base_est_name} predicted velocities"] = sorted([(x,np.mean(tmp[pitcher_ids == x])) for x in np.unique(pitcher_ids)], key = lambda x: x[1], reverse = True)
     tmp = pd.Series([x[1] for x in pitch_cv_predictions[f"{base_est_name} predicted velocities"]], index = [x[0] for x in pitch_cv_predictions[f"{base_est_name} predicted velocities"]])
     df_cv_predictions[f"{base_est_name} predicted velocities"] = tmp
