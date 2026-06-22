@@ -10,7 +10,7 @@ import scipy
 from sklearn import set_config
 set_config(enable_metadata_routing=True)
 
-streamlit_on = True
+streamlit_on = False
 sfs_tol = 0.01
 k_folds = 5
 
@@ -195,6 +195,7 @@ for kth_fold, (train_data, test_data) in enumerate(cv_obj):
         sfs.fit(X_train, y_train)
         sel_col_idx = sfs.get_support()
         selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
+        print(base_est_name)
         print(selected_features)
         X_train_sel = sfs.transform(X_train)
         X_test_sel = sfs.transform(X_test)
@@ -264,6 +265,7 @@ for kth_fold, (train_data, test_data) in enumerate(cv_obj):
         sfs.fit(X_train, y_train)
         sel_col_idx = sfs.get_support()
         selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
+        print(base_est_name)
         print(selected_features)
         X_train_sel = sfs.transform(X_train)
         X_test_sel = sfs.transform(X_test)
@@ -322,6 +324,7 @@ for base_est_name, base_est in pitch_cv_base_ests:
     sfs.fit(X, y)
     sel_col_idx = sfs.get_support()
     selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
+    print(base_est_name)
     print(selected_features)
     X_sel = sfs.transform(X)
     X_pred_sel = sfs.transform(X_pred)
