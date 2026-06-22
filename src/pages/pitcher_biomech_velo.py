@@ -12,7 +12,7 @@ set_config(enable_metadata_routing=True)
 
 streamlit_on = True
 sfs_tol = 0.01
-k_folds = 5
+k_folds = 3
 
 
 if streamlit_on:
