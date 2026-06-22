@@ -1,6 +1,8 @@
 
 import pandas as pd
 import numpy as np
+import os
+import pickle
 import datetime
 from sklearn.experimental import enable_iterative_imputer
 from sklearn import preprocessing, impute, linear_model, metrics, feature_selection, model_selection, ensemble, neighbors, gaussian_process
@@ -10,7 +12,7 @@ import scipy
 from sklearn import set_config
 set_config(enable_metadata_routing=True)
 
-streamlit_on = False
+streamlit_on = True
 sfs_tol = 0.01
 k_folds = 5
 
@@ -150,67 +152,71 @@ feature_cols.pop(feature_cols.index("pitcher_handedness"))
 X = train_df[feature_cols].values
 y = train_df["velocity"].values
 pitcher_ids = train_df["pitcher_id"].values
-### Pitch Cross Validation
-pitch_cv_results = {}
-cv_obj = split_data_by_pitch_id(train_df.index.to_numpy(), k_folds = k_folds)
-for kth_fold, (train_data, test_data) in enumerate(cv_obj):
-    X_train, y_train, X_test, y_test = X[train_data[0],:], y[train_data[0]], X[test_data[0],:], y[test_data[0]]
-    imputer = impute.IterativeImputer()
-    imputer.fit(X_train)
-    X_train = imputer.transform(X_train)
-    X_test = imputer.transform(X_test)
-    # scale X
-    scaler = preprocessing.RobustScaler(unit_variance=True)
-    scaler.fit(X_train)
-    X_train = scaler.transform(X_train)
-    X_test = scaler.transform(X_test)
-    X_train = np.clip(X_train, -3, 3)
-    X_test = np.clip(X_test, -3, 3)
-    # scale y
-    scaler = preprocessing.RobustScaler(unit_variance=True)
-    scaler.fit(y_train.reshape(-1,1))
-    y_train = scaler.transform(y_train.reshape(-1,1)).reshape(-1)
-    y_test = scaler.transform(y_test.reshape(-1,1)).reshape(-1)
-    y_train = np.clip(y_train, -3, 3)
-    y_test = np.clip(y_test, -3, 3)
-    pitch_cv_base_ests = [
-        ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
-        ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
-    ]
-    fold_results =  []
-    for base_est_name, base_est in pitch_cv_base_ests:
-        
-        sfs = feature_selection.SequentialFeatureSelector(
-                                                estimator=base_est,
-                                                # n_features_to_select=1,
-                                                tol=sfs_tol,
-                                                direction="forward",
-                                                # cv=split_data_by_pitcher_id(train_data[1], indices_only=True),
-                                                cv=split_data_by_pitch_id(train_data[1], indices_only=True),
-                                                n_jobs=1,
-                                            )
-        
-        sfs.fit(X_train, y_train)
-        sel_col_idx = sfs.get_support()
-        selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
-        print(base_est_name)
-        print(selected_features)
-        X_train_sel = sfs.transform(X_train)
-        X_test_sel = sfs.transform(X_test)
-        base_est.fit(X_train_sel, y_train)
-        if kth_fold == 0:
-            pitch_cv_results[base_est_name] = dict()
-            pitch_cv_results[base_est_name]["selected_features"] = []
-            pitch_cv_results[base_est_name]["training"] = []
-            pitch_cv_results[base_est_name]["testing"] = []
-        pitch_cv_results[base_est_name]["selected_features"].append(selected_features)
-        pitch_cv_results[base_est_name]["training"].append(100 * base_est.score(X_train_sel, y_train))
-        pitch_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test_sel, y_test))
+pitch_cv_results_file_name = f"./src/data/Phillies_AB_project/pitch_cv_results.pkl"
+if not os.path.isfile(pitch_cv_results_file_name):
+    ### Pitch Cross Validation
+    pitch_cv_results = {}
+    cv_obj = split_data_by_pitch_id(train_df.index.to_numpy(), k_folds = k_folds)
+    for kth_fold, (train_data, test_data) in enumerate(cv_obj):
+        X_train, y_train, X_test, y_test = X[train_data[0],:], y[train_data[0]], X[test_data[0],:], y[test_data[0]]
+        imputer = impute.IterativeImputer()
+        imputer.fit(X_train)
+        X_train = imputer.transform(X_train)
+        X_test = imputer.transform(X_test)
+        # scale X
+        scaler = preprocessing.RobustScaler(unit_variance=True)
+        scaler.fit(X_train)
+        X_train = scaler.transform(X_train)
+        X_test = scaler.transform(X_test)
+        X_train = np.clip(X_train, -3, 3)
+        X_test = np.clip(X_test, -3, 3)
+        # scale y
+        scaler = preprocessing.RobustScaler(unit_variance=True)
+        scaler.fit(y_train.reshape(-1,1))
+        y_train = scaler.transform(y_train.reshape(-1,1)).reshape(-1)
+        y_test = scaler.transform(y_test.reshape(-1,1)).reshape(-1)
+        y_train = np.clip(y_train, -3, 3)
+        y_test = np.clip(y_test, -3, 3)
+        pitch_cv_base_ests = [
+            ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
+            ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+            ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+            ("RF", ensemble.RandomForestRegressor(n_estimators=25, n_jobs=-1)),
+        ]
+        fold_results =  []
+        for base_est_name, base_est in pitch_cv_base_ests:
+            
+            sfs = feature_selection.SequentialFeatureSelector(
+                                                    estimator=base_est,
+                                                    # n_features_to_select=1,
+                                                    tol=sfs_tol,
+                                                    direction="forward",
+                                                    # cv=split_data_by_pitcher_id(train_data[1], indices_only=True),
+                                                    cv=split_data_by_pitch_id(train_data[1], indices_only=True),
+                                                    n_jobs=1,
+                                                )
+            
+            sfs.fit(X_train, y_train)
+            sel_col_idx = sfs.get_support()
+            selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
+            print(base_est_name)
+            print(selected_features)
+            X_train_sel = sfs.transform(X_train)
+            X_test_sel = sfs.transform(X_test)
+            base_est.fit(X_train_sel, y_train)
+            if kth_fold == 0:
+                pitch_cv_results[base_est_name] = dict()
+                pitch_cv_results[base_est_name]["selected_features"] = []
+                pitch_cv_results[base_est_name]["training"] = []
+                pitch_cv_results[base_est_name]["testing"] = []
+            pitch_cv_results[base_est_name]["selected_features"].append(selected_features)
+            pitch_cv_results[base_est_name]["training"].append(100 * base_est.score(X_train_sel, y_train))
+            pitch_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test_sel, y_test))
 
-        # print(pitch_cv_results)
-
+            # print(pitch_cv_results)
+    pickle.dump((pitch_cv_results, pitch_cv_base_ests), open(pitch_cv_results_file_name,"wb"))
+else:
+    (pitch_cv_results, pitch_cv_base_ests) = pickle.load(open(pitch_cv_results_file_name,"rb"))
 for base_est_name, base_est in pitch_cv_base_ests:
     print(f"{base_est_name}\nTraining $R^2$: {np.mean(pitch_cv_results[base_est_name]["training"])}% (+/-) {np.std(pitch_cv_results[base_est_name]["training"])}" \
             f"\nTesting $R^2$: {np.mean(pitch_cv_results[base_est_name]["testing"])}% (+/-) {np.std(pitch_cv_results[base_est_name]["testing"])}")
@@ -222,63 +228,68 @@ if streamlit_on:
 X = train_df[feature_cols].values
 y = train_df["velocity"].values
 pitcher_ids = train_df["pitcher_id"].values
-### Pitcher Cross Validation
-pitcher_cv_results = {}
-cv_obj = split_data_by_pitcher_id(pitcher_ids, k_folds = k_folds)
-# cv_obj = split_data_by_pitch_id(train_df.index.to_numpy(), k_folds = k_folds)
-for kth_fold, (train_data, test_data) in enumerate(cv_obj):
-    X_train, y_train, X_test, y_test = X[train_data[0],:], y[train_data[0]], X[test_data[0],:], y[test_data[0]]
-    imputer = impute.IterativeImputer()
-    imputer.fit(X_train)
-    X_train = imputer.transform(X_train)
-    X_test = imputer.transform(X_test)
-    # scale X
-    scaler = preprocessing.RobustScaler(unit_variance=True)
-    scaler.fit(X_train)
-    X_train = scaler.transform(X_train)
-    X_test = scaler.transform(X_test)
-    X_train = np.clip(X_train, -3, 3)
-    X_test = np.clip(X_test, -3, 3)
-    # scale y
-    scaler = preprocessing.RobustScaler(unit_variance=True)
-    scaler.fit(y_train.reshape(-1,1))
-    y_train = scaler.transform(y_train.reshape(-1,1)).reshape(-1)
-    y_test = scaler.transform(y_test.reshape(-1,1)).reshape(-1)
-    y_train = np.clip(y_train, -3, 3)
-    y_test = np.clip(y_test, -3, 3)
-    pitcher_cv_base_ests = [
-        ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
-        ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
-    ]
-    fold_results =  []
-    for base_est_name, base_est in pitcher_cv_base_ests:
-        sfs = feature_selection.SequentialFeatureSelector(
-                                                estimator=base_est,
-                                                tol=sfs_tol,
-                                                direction="forward",
-                                                cv=split_data_by_pitcher_id(train_data[1], indices_only=True),
-                                                n_jobs=1,
-                                            )
-        
-        sfs.fit(X_train, y_train)
-        sel_col_idx = sfs.get_support()
-        selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
-        print(base_est_name)
-        print(selected_features)
-        X_train_sel = sfs.transform(X_train)
-        X_test_sel = sfs.transform(X_test)
-        base_est.fit(X_train_sel, y_train)
-        if kth_fold == 0:
-            pitcher_cv_results[base_est_name] = dict()
-            pitcher_cv_results[base_est_name]["selected_features"] = []
-            pitcher_cv_results[base_est_name]["training"] = []
-            pitcher_cv_results[base_est_name]["testing"] = []
-        pitcher_cv_results[base_est_name]["selected_features"].append(selected_features)
-        pitcher_cv_results[base_est_name]["training"].append(100 * base_est.score(X_train_sel, y_train))
-        pitcher_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test_sel, y_test))
-        # print(pitcher_cv_results)
+pitcher_cv_results_file_name = f"./src/data/Phillies_AB_project/pitcher_cv_results.pkl"
+if not os.path.isfile(pitcher_cv_results_file_name):
+    ### Pitcher Cross Validation
+    pitcher_cv_results = {}
+    cv_obj = split_data_by_pitcher_id(pitcher_ids, k_folds = k_folds)
+    # cv_obj = split_data_by_pitch_id(train_df.index.to_numpy(), k_folds = k_folds)
+    for kth_fold, (train_data, test_data) in enumerate(cv_obj):
+        X_train, y_train, X_test, y_test = X[train_data[0],:], y[train_data[0]], X[test_data[0],:], y[test_data[0]]
+        imputer = impute.IterativeImputer()
+        imputer.fit(X_train)
+        X_train = imputer.transform(X_train)
+        X_test = imputer.transform(X_test)
+        # scale X
+        scaler = preprocessing.RobustScaler(unit_variance=True)
+        scaler.fit(X_train)
+        X_train = scaler.transform(X_train)
+        X_test = scaler.transform(X_test)
+        X_train = np.clip(X_train, -3, 3)
+        X_test = np.clip(X_test, -3, 3)
+        # scale y
+        scaler = preprocessing.RobustScaler(unit_variance=True)
+        scaler.fit(y_train.reshape(-1,1))
+        y_train = scaler.transform(y_train.reshape(-1,1)).reshape(-1)
+        y_test = scaler.transform(y_test.reshape(-1,1)).reshape(-1)
+        y_train = np.clip(y_train, -3, 3)
+        y_test = np.clip(y_test, -3, 3)
+        pitcher_cv_base_ests = [
+            ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
+            ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+            ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+            ("RF", ensemble.RandomForestRegressor(n_estimators=25, n_jobs=-1)),
+        ]
+        fold_results =  []
+        for base_est_name, base_est in pitcher_cv_base_ests:
+            sfs = feature_selection.SequentialFeatureSelector(
+                                                    estimator=base_est,
+                                                    tol=sfs_tol,
+                                                    direction="forward",
+                                                    cv=split_data_by_pitcher_id(train_data[1], indices_only=True),
+                                                    n_jobs=1,
+                                                )
+            
+            sfs.fit(X_train, y_train)
+            sel_col_idx = sfs.get_support()
+            selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
+            print(base_est_name)
+            print(selected_features)
+            X_train_sel = sfs.transform(X_train)
+            X_test_sel = sfs.transform(X_test)
+            base_est.fit(X_train_sel, y_train)
+            if kth_fold == 0:
+                pitcher_cv_results[base_est_name] = dict()
+                pitcher_cv_results[base_est_name]["selected_features"] = []
+                pitcher_cv_results[base_est_name]["training"] = []
+                pitcher_cv_results[base_est_name]["testing"] = []
+            pitcher_cv_results[base_est_name]["selected_features"].append(selected_features)
+            pitcher_cv_results[base_est_name]["training"].append(100 * base_est.score(X_train_sel, y_train))
+            pitcher_cv_results[base_est_name]["testing"].append(100 * base_est.score(X_test_sel, y_test))
+            # print(pitcher_cv_results)
+    pickle.dump((pitcher_cv_results, pitcher_cv_base_ests), open(pitcher_cv_results_file_name,"wb"))
+else:
+    (pitcher_cv_results, pitcher_cv_base_ests) = pickle.load(open(pitcher_cv_results_file_name,"rb"))
     
 for base_est_name, base_est in pitcher_cv_base_ests:
     print(f"{base_est_name}\nTraining $R^2$: {np.mean(pitcher_cv_results[base_est_name]["training"])}% (+/-) {np.std(pitcher_cv_results[base_est_name]["training"])}" \
@@ -292,53 +303,65 @@ if streamlit_on:
     st.markdown("It is quite clear that the results from the pitch cross validation show strong predictive performance. However, the player cross validation does not " \
     "show strong predictive performance. Given more time, I would explore sample weights for the dataset to balance the effects of pitchers' with plenty of data.")
 
-# PREDICTIONS
-X_pred = test_df[feature_cols].values
-pitcher_ids = test_df["pitcher_id"].values
-# PITCH CV MODELS
-imputer = impute.IterativeImputer()
-imputer.fit(X)
-X = imputer.transform(X)
-X_pred = imputer.transform(X_pred)
-# scale X
-scaler = preprocessing.RobustScaler(unit_variance=True)
-scaler.fit(X)
-X = scaler.transform(X)
-X_pred = scaler.transform(X_pred)
-X = np.clip(X, -3, 3)
-X_pred = np.clip(X_pred, -3, 3)
-# scale y
-scaler = preprocessing.RobustScaler(unit_variance=True)
-scaler.fit(y.reshape(-1,1))
-y = scaler.transform(y.reshape(-1,1)).reshape(-1)
-pitch_cv_predictions = {}
-df_cv_predictions = pd.DataFrame()
-for base_est_name, base_est in pitch_cv_base_ests:
-    sfs = feature_selection.SequentialFeatureSelector(
-                                                estimator=base_est,
-                                                tol=sfs_tol,
-                                                direction="forward",
-                                                n_jobs=1,
-                                            )
-        
-    sfs.fit(X, y)
-    sel_col_idx = sfs.get_support()
-    selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
-    print(base_est_name)
-    print(selected_features)
-    X_sel = sfs.transform(X)
-    X_pred_sel = sfs.transform(X_pred)
-    base_est.fit(X_sel, y)
-    tmp = scaler.inverse_transform(base_est.predict(X_pred_sel).reshape(-1,1)).reshape(-1,)
-    pitch_cv_predictions[f"{base_est_name} predicted velocities"] = sorted([(x,np.mean(tmp[pitcher_ids == x])) for x in np.unique(pitcher_ids)], key = lambda x: x[1], reverse = True)
-    tmp = pd.Series([x[1] for x in pitch_cv_predictions[f"{base_est_name} predicted velocities"]], index = [x[0] for x in pitch_cv_predictions[f"{base_est_name} predicted velocities"]])
-    df_cv_predictions[f"{base_est_name} predicted velocities"] = tmp
+prediction_results_file_name = f"./src/data/Phillies_AB_project/prediction_results.pkl"
+if not os.path.isfile(prediction_results_file_name):
+    # PREDICTIONS
+    X_pred = test_df[feature_cols].values
+    pitcher_ids = test_df["pitcher_id"].values
+    # PITCH CV MODELS
+    imputer = impute.IterativeImputer()
+    imputer.fit(X)
+    X = imputer.transform(X)
+    X_pred = imputer.transform(X_pred)
+    # scale X
+    scaler = preprocessing.RobustScaler(unit_variance=True)
+    scaler.fit(X)
+    X = scaler.transform(X)
+    X_pred = scaler.transform(X_pred)
+    X = np.clip(X, -3, 3)
+    X_pred = np.clip(X_pred, -3, 3)
+    # scale y
+    scaler = preprocessing.RobustScaler(unit_variance=True)
+    scaler.fit(y.reshape(-1,1))
+    y = scaler.transform(y.reshape(-1,1)).reshape(-1)
+    pitch_cv_predictions = {}
+    df_cv_predictions = pd.DataFrame()
+    cv_obj = split_data_by_pitch_id(train_df.index.to_numpy(), k_folds = k_folds, indices_only=True)
+    pred_cv_base_ests = [
+            ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
+            ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+            ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+            ("RF", ensemble.RandomForestRegressor(n_estimators=25, n_jobs=-1)),
+        ]
+    for base_est_name, base_est in pred_cv_base_ests:
+        sfs = feature_selection.SequentialFeatureSelector(
+                                                    estimator=base_est,
+                                                    tol=sfs_tol,
+                                                    direction="forward",
+                                                    cv=cv_obj,
+                                                    n_jobs=1,
+                                                )
+            
+        sfs.fit(X, y)
+        sel_col_idx = sfs.get_support()
+        selected_features = [x for (x,y) in zip(feature_cols, sel_col_idx) if y]
+        print(base_est_name)
+        print(selected_features)
+        X_sel = sfs.transform(X)
+        X_pred_sel = sfs.transform(X_pred)
+        base_est.fit(X_sel, y)
+        tmp = scaler.inverse_transform(base_est.predict(X_pred_sel).reshape(-1,1)).reshape(-1,)
+        pitch_cv_predictions[f"{base_est_name} predicted velocities"] = sorted([(x,np.mean(tmp[pitcher_ids == x])) for x in np.unique(pitcher_ids)], key = lambda x: x[1], reverse = True)
+        tmp = pd.Series([x[1] for x in pitch_cv_predictions[f"{base_est_name} predicted velocities"]], index = [x[0] for x in pitch_cv_predictions[f"{base_est_name} predicted velocities"]])
+        df_cv_predictions[f"{base_est_name} predicted velocities"] = tmp
+    pickle.dump((df_cv_predictions, pred_cv_base_ests), open(prediction_results_file_name, "wb"))
+else:
+    (df_cv_predictions, pred_cv_base_ests) = pickle.load(open(prediction_results_file_name, "rb"))
 
 df_cv_predictions.index.name = "pitcher_id"
 
 if streamlit_on:
     st.subheader("2025 FCL Predicted Velocities", divider=True)
     st.dataframe(df_cv_predictions)
-    st.markdown("Player ID 91 is predicted to have the highest average fastball velocity according the Random Forest Regression model which was the most accurate model in the pitch cross validation test.")
 
 
