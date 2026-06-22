@@ -11,8 +11,8 @@ from sklearn import set_config
 set_config(enable_metadata_routing=True)
 
 streamlit_on = True
-sfs_tol = 0.1
-k_folds = 2
+sfs_tol = 0.01
+k_folds = 5
 
 
 if streamlit_on:
@@ -176,8 +176,8 @@ for kth_fold, (train_data, test_data) in enumerate(cv_obj):
     pitch_cv_base_ests = [
         ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
         ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        # ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        # ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
+        ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+        ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
     ]
     fold_results =  []
     for base_est_name, base_est in pitch_cv_base_ests:
@@ -248,8 +248,8 @@ for kth_fold, (train_data, test_data) in enumerate(cv_obj):
     pitcher_cv_base_ests = [
         ("OLS", linear_model.LinearRegression(fit_intercept=True).set_score_request(sample_weight=True).set_fit_request(sample_weight=True)),
         ("Ridge", linear_model.RidgeCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        # ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
-        # ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
+        ("LASSO", linear_model.LassoCV(alphas = np.logspace(-3,3,10)).set_fit_request(sample_weight=True).set_score_request(sample_weight=True)),
+        ("RF", ensemble.RandomForestRegressor(n_estimators=10, n_jobs=-1)),
     ]
     fold_results =  []
     for base_est_name, base_est in pitcher_cv_base_ests:
