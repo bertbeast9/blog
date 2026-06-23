@@ -6,6 +6,6 @@ st.header ("", divider=True)
 st.sidebar.markdown("# Home Page")
 st.subheader("Hey y'all!",divider=True)
 st.text("My name is Sam Bertelson, and welcome to my blog. This page is where I'll be keeping track of all my main and side projects.\nHopefully, you will enjoy!\nFeel free to email me with any inquiries at sam.bertelson@gmail.com\n")
-
+st.text("TEST")
 
 
