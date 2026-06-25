@@ -18,18 +18,15 @@ from mdls.pitch_predictor.models import AveragePitchPredictor, MarkovPitchPredic
 
 
 #### FUNCTIONS
-@st.cache_data
 def load_pitch_data():
-    pitch_data = pd.read_csv("./src/data/Swish_Baseball_project/MLB/pitches.csv")#, nrows=10000
+    pitch_data = pd.read_csv("./src/data/Swish_Baseball_project/MLB/pitches.csv")#, nrows=100000
     print(pitch_data.head())
     return pitch_data
 
-@st.cache_data
 def order_pitches_global(df):
     df.sort_values(["date", "game_pk","at_bat_num","pcount_at_bat"], inplace=True)
     return df
 
-@st.cache_data
 def split_data_by_at_bats(pitch_data):
     pitch_data["date"] = pitch_data["date"].apply(lambda x: datetime.datetime.strptime(x, "%Y-%m-%d"))
     pitch_data = order_pitches_global(pitch_data)
@@ -39,12 +36,16 @@ def split_data_by_at_bats(pitch_data):
     start_ab_ind = pitch_data.index[pitch_data["start_at_bat"].apply(lambda x: bool(x))]
     end_ab_ind = pitch_data.index[pitch_data["end_at_bat"].apply(lambda x: bool(x))]
     at_bats = []
-    for (s_ind, e_ind) in zip(start_ab_ind, end_ab_ind):
-        at_bats.append(pitch_data.iloc[s_ind:e_ind+1].copy())
+    progress_bar = st.progress(0, text="Splitting Data by At-Bat")
+    N = len(start_ab_ind)
+    for idx, (s_ind, e_ind) in enumerate(zip(start_ab_ind, end_ab_ind)):
+        progress_bar.progress(idx/N, text="Splitting Data by At-Bat")
+        at_bats.append(pitch_data.loc[s_ind:e_ind].copy())
+        if not ((at_bats[-1]["pcount_at_bat"].diff()[1:] == 1).all() and at_bats[-1]["pcount_at_bat"].values[0] == 1):
+            at_bats.pop()
     del pitch_data
     return at_bats
 
-@st.cache_data
 def build_markov_chain_model(at_bats, poss_states):
     N = len(poss_states)
     A = np.zeros([N,N])
@@ -65,7 +66,24 @@ def build_markov_chain_model(at_bats, poss_states):
     pi = tmp[0][1]
     pi = pi / np.sum(pi)
     return(A, pi.reshape(1,-1))
-            
+
+def fit_and_score_avg_pitch_predictor(poss_states, at_bats, metric):
+    avg_glob_mdl = AveragePitchPredictor(poss_states)
+    avg_glob_mdl.fit(at_bats[:int(len(at_bats)/2)])
+    avg_glob_mdl_metric = avg_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric)
+    return (avg_glob_mdl, avg_glob_mdl_metric)
+
+def fit_and_score_markov_glob_pitch_predictor(poss_states, at_bats, metric):
+    markov_glob_mdl = MarkovPitchPredictor(poss_states)
+    markov_glob_mdl.fit(at_bats[:int(len(at_bats)/2)])
+    markov_glob_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric)
+    return (markov_glob_mdl, markov_glob_mdl_metric)
+
+def fit_and_score_markov_glob_split_pitch_predictor(poss_states, at_bats, metric):
+    markov_glob_split_mdl = MarkovPitchPredictorHandedness(poss_states)
+    markov_glob_split_mdl.fit(at_bats[:int(len(at_bats)/2)])
+    markov_glob_split_mdl_metric = markov_glob_split_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric)
+    return (markov_glob_split_mdl, markov_glob_split_mdl_metric)
 
 #### FUNCTIONS
 
@@ -77,7 +95,8 @@ pitch_dict = {"FF":"4-Seam Fastball","SI":"Sinker (2-Seam)","FC":"Cutter",
           "CH":"Changeup","FS":"Split-finger","SC":"Screwball",
           "CU":"Curveball","KC":"Knuckle Curve","CS":"Slow Curve","SL":"Slider",
           "ST":"Sweeper","SV":"Slurve","KN":"Knuckleball","EP":"Eephus","FA":"Other",
-          "IN":"Intentional Ball","PO":"Pitchout"}#
+          "IN":"Intentional Ball","PO":"Pitchout"}
+metric = "avg_like"
 #### VARIABLES
 
 st.header("Pitch Predictor",divider=True)
@@ -139,24 +158,34 @@ st.markdown("Now, I need to order the data such that this methodology makes sens
 "I need to ensure that each pitch sequence is proper (pitch 1 -> pitch 2 -> pitch 3 etc.) and not (pitch 1 -> pitch 3).")
 
 print(pitch_data["date"].iloc[0])
+# st.dataframe(pitch_data)
 at_bats = split_data_by_at_bats(pitch_data)
-np.random.shuffle(at_bats)
-avg_glob_mdl = AveragePitchPredictor(poss_states)
-avg_glob_mdl.fit(at_bats[:int(len(at_bats)/2)])
-avg_glob_mdl_metric = avg_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = "avg_like")
 
-markov_glob_mdl = MarkovPitchPredictor(poss_states)
-markov_glob_mdl.fit(at_bats[:int(len(at_bats)/2)])
+np.random.shuffle(at_bats)
+
+# # st.subheader("Simplest Model", divider=True)
+# # st.markdown("For this model, we will use a discrete-time Markov Chain to model the process of selecting the next pitch. The intuition behind this Markov Chain is that the next " \
+# # "selected pitch only depends on the last thrown pitch. This should capture the _setup_ pitches in which a pitcher will setup a curveball by throwing a fastball first, for example.")
+
+# # st.table(pitch_dict)
+# # st.latex("x_k \\in S = \\text{all possible pitches from pitcher} = \\set{FF, SI, FC, \\dots}\\newline x_{k+1} = A x_{k}")
+# # st.markdown("$A$ is the state transition matrix where $a_{i,j}$ is the probability of transitioning to state $i$ given one is in state $j$.")
+# # st.latex("a_{i,j} = P(x_i | x_j) \\forall x_i, x_j \\in S")
+# # st.markdown("The Markov Chain also must have an initial distribution, $\\pi_0$, on the probability of starting the Markov chain in each state. This initial distribution will " \
+# # "be calculated as the average probability of a pitch over all time.")
+# # st.markdown("This model is termed the _simplest_ model because we will use all available data to create a global, or average, pitcher. This ignores effects from splits (LHP vs LHH, etc.), " \
+# # "counts (0-0, 3-2, etc.), or other factors.")
+
+
+(avg_glob_mdl, avg_glob_mdl_metric) = fit_and_score_avg_pitch_predictor(poss_states, at_bats, metric)
+(markov_glob_mdl, markov_glob_mdl_metric) = fit_and_score_markov_glob_pitch_predictor(poss_states, at_bats, metric)
 P_mat = pd.DataFrame(markov_glob_mdl.A["NA"]["NA"], index = poss_states, columns = poss_states)
 st.dataframe(P_mat)
 pi_mat = pd.DataFrame(markov_glob_mdl.pi["NA"]["NA"].reshape(1,-1), index=["longterm_prob."], columns = poss_states)
 st.dataframe(pi_mat)
-markov_glob_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = "avg_like")
 
-markov_glob_split_mdl = MarkovPitchPredictorHandedness(poss_states)
-markov_glob_split_mdl.fit(at_bats[:int(len(at_bats)/2)])
-markov_glob_split_mdl_metric = markov_glob_split_mdl.score(at_bats[int(len(at_bats)/2):], metric = "avg_like")
-
+(markov_glob_split_mdl, markov_glob_split_mdl_metric) = fit_and_score_markov_glob_split_pitch_predictor(poss_states, at_bats, metric)
+# st.json(markov_glob_split_mdl.A)
 # P_mat = pd.DataFrame(markov_glob_split_mdl.A["NA"]["RR"], index = poss_states, columns = poss_states)
 # st.dataframe(P_mat)
 # pi_mat = pd.DataFrame(markov_glob_split_mdl.pi["NA"]["RR"].reshape(1,-1), index=["longterm_prob."], columns = poss_states)
@@ -176,19 +205,6 @@ st.markdown(f"For the model that predicts just the average pitch, the average pr
 # print(next_state_pred_dist)
 # next_state_pred_max = np.argmax(next_state_pred_dist)
 # print(f"Last pitch thrown: {last_pitch_thrown} Next predicted state is {poss_states[next_state_pred_max]} ({100 * next_state_pred_dist[0,next_state_pred_max]:0.2f}%) vs average {poss_states[np.argmax(pi)]} ({100 * np.max(pi):0.2f}%)")
-
-# # st.subheader("Simplest Model", divider=True)
-# # st.markdown("For this model, we will use a discrete-time Markov Chain to model the process of selecting the next pitch. The intuition behind this Markov Chain is that the next " \
-# # "selected pitch only depends on the last thrown pitch. This should capture the _setup_ pitches in which a pitcher will setup a curveball by throwing a fastball first, for example.")
-
-# # st.table(pitch_dict)
-# # st.latex("x_k \\in S = \\text{all possible pitches from pitcher} = \\set{FF, SI, FC, \\dots}\\newline x_{k+1} = A x_{k}")
-# # st.markdown("$A$ is the state transition matrix where $a_{i,j}$ is the probability of transitioning to state $i$ given one is in state $j$.")
-# # st.latex("a_{i,j} = P(x_i | x_j) \\forall x_i, x_j \\in S")
-# # st.markdown("The Markov Chain also must have an initial distribution, $\\pi_0$, on the probability of starting the Markov chain in each state. This initial distribution will " \
-# # "be calculated as the average probability of a pitch over all time.")
-# # st.markdown("This model is termed the _simplest_ model because we will use all available data to create a global, or average, pitcher. This ignores effects from splits (LHP vs LHH, etc.), " \
-# # "counts (0-0, 3-2, etc.), or other factors.")
 
 
 
