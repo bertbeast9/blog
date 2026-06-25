@@ -19,7 +19,7 @@ from mdls.pitch_predictor.models import AveragePitchPredictor, MarkovPitchPredic
 
 #### FUNCTIONS
 def load_pitch_data():
-    pitch_data = pd.read_csv("./src/data/Swish_Baseball_project/MLB/pitches.csv")#, nrows=100000
+    pitch_data = pd.read_csv("./src/data/Swish_Baseball_project/MLB/pitches.csv")#, nrows=50000
     print(pitch_data.head())
     return pitch_data
 
@@ -96,7 +96,7 @@ pitch_dict = {"FF":"4-Seam Fastball","SI":"Sinker (2-Seam)","FC":"Cutter",
           "CU":"Curveball","KC":"Knuckle Curve","CS":"Slow Curve","SL":"Slider",
           "ST":"Sweeper","SV":"Slurve","KN":"Knuckleball","EP":"Eephus","FA":"Other",
           "IN":"Intentional Ball","PO":"Pitchout"}
-metric = "avg_like"
+metric = "cross-entropy"
 #### VARIABLES
 
 st.header("Pitch Predictor",divider=True)
@@ -163,18 +163,33 @@ at_bats = split_data_by_at_bats(pitch_data)
 
 np.random.shuffle(at_bats)
 
-# # st.subheader("Simplest Model", divider=True)
-# # st.markdown("For this model, we will use a discrete-time Markov Chain to model the process of selecting the next pitch. The intuition behind this Markov Chain is that the next " \
-# # "selected pitch only depends on the last thrown pitch. This should capture the _setup_ pitches in which a pitcher will setup a curveball by throwing a fastball first, for example.")
+st.subheader("Evaluating Models", divider=True)
+st.markdown("It is very important that we utilize a pertinent metric for this problem. This problem can be boiled down to a multi-class classification problem in which the class is the " \
+"type of pitch thrown in that scenario. For each model and before each pitch, we can assign a probability of observing a particular class. We can assess each prediction by comparing it to the " \
+"true distribution, $\\vec{q}_k$. For example, let's say that a model predicts the following distribution for the $k^{th}$ pitch while the true $k^{th}$ pitch was actually a CH.")
+st.latex(rf"""
+         \vec{{p}}_k \in \mathbb{{R}}^{len(poss_states)} = \left[ \begin{{matrix}} p_{{k,CH}} && p_{{k,CU}} && \dots && p_{{k,SL}}  \end{{matrix}} \right] \newline
+         \vec{{q}}_k \in \mathbb{{R}}^{len(poss_states)} = \left[ \begin{{matrix}} 1.0 && 0.0 && \dots && 0.0  \end{{matrix}} \right]
+""")
+st.markdown("Then, we can compare the prediction and the true outcome with the cross-entropy metric [https://en.wikipedia.org/wiki/Cross-entropy].")
 
-# # st.table(pitch_dict)
-# # st.latex("x_k \\in S = \\text{all possible pitches from pitcher} = \\set{FF, SI, FC, \\dots}\\newline x_{k+1} = A x_{k}")
-# # st.markdown("$A$ is the state transition matrix where $a_{i,j}$ is the probability of transitioning to state $i$ given one is in state $j$.")
-# # st.latex("a_{i,j} = P(x_i | x_j) \\forall x_i, x_j \\in S")
-# # st.markdown("The Markov Chain also must have an initial distribution, $\\pi_0$, on the probability of starting the Markov chain in each state. This initial distribution will " \
-# # "be calculated as the average probability of a pitch over all time.")
-# # st.markdown("This model is termed the _simplest_ model because we will use all available data to create a global, or average, pitcher. This ignores effects from splits (LHP vs LHH, etc.), " \
-# # "counts (0-0, 3-2, etc.), or other factors.")
+st.subheader("Simplest Baseline Model", divider=True)
+st.markdown("As a baseline, one simplistic method for predicting what the next pitch will be is to predict the average distribution of pitches. This model will " \
+"do exactly that. For each pitch, it will assign the average probability of throwing a fastball etc. in all scenarios. To 'train' this model, we will take the trainining " \
+"data and calculate the average probability each particular pitch was thrown. ")
+
+st.subheader("Simplest Markov Model", divider=True)
+st.markdown("For this model, we will use a discrete-time Markov Chain to model the process of selecting the next pitch. The intuition behind this Markov Chain is that the next " \
+"selected pitch only depends on the last thrown pitch. This should capture the _setup_ pitches in which a pitcher will setup a curveball by throwing a fastball first, for example.")
+
+st.table(pitch_dict)
+st.latex("x_k \\in S = \\text{all possible pitches from pitcher} = \\set{FF, SI, FC, \\dots}\\newline x_{k+1} = A x_{k}")
+st.markdown("$A$ is the state transition matrix where $a_{i,j}$ is the probability of transitioning to state $i$ given one is in state $j$.")
+st.latex("a_{i,j} = P(x_i | x_j) \\forall x_i, x_j \\in S")
+st.markdown("The Markov Chain also must have an initial distribution, $\\pi_0$, on the probability of starting the Markov chain in each state. This initial distribution will " \
+"be calculated as the average probability of a pitch over all time.")
+st.markdown("This model is termed the _simplest_ model because we will use all available data to create a global, or average, pitcher. This ignores effects from splits (LHP vs LHH, etc.), " \
+"counts (0-0, 3-2, etc.), or other factors.")
 
 
 (avg_glob_mdl, avg_glob_mdl_metric) = fit_and_score_avg_pitch_predictor(poss_states, at_bats, metric)

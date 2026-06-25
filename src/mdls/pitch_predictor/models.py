@@ -1,6 +1,7 @@
 import numpy as np
 import scipy
 import streamlit as st
+from sklearn.metrics import log_loss
 
 class AveragePitchPredictor():
 
@@ -19,32 +20,39 @@ class AveragePitchPredictor():
         self.pi = {"NA": {"NA":pi / np.sum(pi)}}
         return
     
-    def predict(self, curr_state):
+    def predict(self, curr_state, split = "NA", pitcher_id = "NA"):
         """
         Predict the distribution of next state
         """
-        return self.pi["NA"]["NA"]
+        return self.pi[pitcher_id][split]
     
-    def score(self, at_bats, metric = "nll"):
+    def score(self, at_bats, metric = "cross-entropy"):
         """
         Scores the model based on the data from at_bats
         """
-        if metric == "nll" or metric == "avg_like":
-            metric_val = 0
+        if metric == "cross-entropy":
             ctr = 0
+            y_true = []
+            y_pred = []
             progress_bar = st.progress(0, text="Scoring Model")
             for at_bat_idx, at_bat in enumerate(at_bats):
                 progress_bar.progress(at_bat_idx/len(at_bats), text="Scoring Model")
-                curr_state = self.pi["NA"]["NA"]
                 for pitch_idx, pitch_data in at_bat.iterrows():
-                    next_state_dist = self.predict(curr_state)
-                    last_state = curr_state
-                    metric_val -= np.log(np.maximum(1e-3,next_state_dist[0,pitch_data.curr_state_int]))
-                    curr_state = np.zeros([1,self.n_states])
-                    curr_state[0,pitch_data.curr_state_int] = 1
+                    if pitch_idx == at_bat.index[0]:
+                        pitcher_id = "NA"
+                        pitch_throws = "N"
+                        bat_stand = "A"
+                        curr_state_dist = self.pi[f"{pitcher_id}"][f"{pitch_throws}{bat_stand}"]
+                    next_state_dist = self.predict(curr_state_dist, split=f"{pitch_throws}{bat_stand}", pitcher_id=f"{pitcher_id}")
+                    y_pred.append(next_state_dist)
+                    last_state = curr_state_dist
+                    curr_state_dist = np.zeros([1,self.n_states])
+                    curr_state_dist[0,pitch_data.curr_state_int] = 1
+                    y_true.append(curr_state_dist)
                     ctr += 1
-            if metric == "avg_like":
-                metric_val = np.exp(-(metric_val/ctr))
+            y_true = np.concat(y_true, axis=0)
+            y_pred = np.concat(y_pred, axis=0)
+            metric_val = np.exp(-log_loss(y_true, y_pred))
         return metric_val
 
 class MarkovPitchPredictor(AveragePitchPredictor):
@@ -138,9 +146,10 @@ class MarkovPitchPredictorHandedness(MarkovPitchPredictor):
         """
         Scores the model based on the data from at_bats
         """
-        if metric == "nll" or metric == "avg_like":
-            metric_val = 0
+        if metric == "cross-entropy":
             ctr = 0
+            y_true = []
+            y_pred = []
             progress_bar = st.progress(0, text="Scoring Model")
             for at_bat_idx, at_bat in enumerate(at_bats):
                 progress_bar.progress(at_bat_idx/len(at_bats), text="Scoring Model")
@@ -153,14 +162,13 @@ class MarkovPitchPredictorHandedness(MarkovPitchPredictor):
                             pitcher_id = "NA"
                         curr_state_dist = self.pi[f"{pitcher_id}"][f"{pitch_throws}{bat_stand}"]
                     next_state_dist = self.predict(curr_state_dist, split=f"{pitch_throws}{bat_stand}", pitcher_id=f"{pitcher_id}")
+                    y_pred.append(next_state_dist)
                     last_state = curr_state_dist
-                    metric_val -= np.log(np.maximum(1e-2,next_state_dist[0,pitch_data.curr_state_int]))
                     curr_state_dist = np.zeros([1,self.n_states])
                     curr_state_dist[0,pitch_data.curr_state_int] = 1
-                    # print(next_state_dist)
-                    # print(curr_state_dist)
-                    # breakpoint()
+                    y_true.append(curr_state_dist)
                     ctr += 1
-            if metric == "avg_like":
-                metric_val = np.exp(-(metric_val/ctr))
+            y_true = np.concat(y_true, axis=0)
+            y_pred = np.concat(y_pred, axis=0)
+            metric_val = np.exp(-log_loss(y_true, y_pred))
         return metric_val
