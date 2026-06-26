@@ -2,7 +2,7 @@ import numpy as np
 import scipy
 import streamlit as st
 from sklearn.metrics import log_loss
-
+from sklearn.ensemble import RandomForestClassifier
 class AveragePitchPredictor():
 
     def __init__(self, state_names):
@@ -142,7 +142,7 @@ class MarkovPitchPredictorHandedness(MarkovPitchPredictor):
         next_state_dist = curr_state @ self.A[pitcher_id][split]
         return next_state_dist
     
-    def score(self, at_bats, metric = "nll"):
+    def score(self, at_bats, metric = "cross-entropy"):
         """
         Scores the model based on the data from at_bats
         """
@@ -171,4 +171,52 @@ class MarkovPitchPredictorHandedness(MarkovPitchPredictor):
             y_true = np.concat(y_true, axis=0)
             y_pred = np.concat(y_pred, axis=0)
             metric_val = np.exp(-log_loss(y_true, y_pred))
+        return metric_val
+    
+
+class RFModelPitchPredictor():
+
+    def __init__(self, state_names):
+        self.state_names = state_names
+        self.n_states = len(self.state_names)
+        return
+    
+    def fit(self, at_bats, features):
+        progress_bar = st.progress(0, text="Fitting Random Forest Model")
+        X, y = [], []
+        for at_bat_idx, at_bat in enumerate(at_bats):
+            progress_bar.progress(at_bat_idx/len(at_bats), text="Fitting Random Forest Model")
+            for pitch_idx, pitch_data in at_bat.iterrows():
+                X.append(pitch_data[features].values.reshape(1,-1))
+                # tmp = np.zeros([1, self.n_states])
+                # tmp[0,list(self.state_names).index(pitch_data["pitch_type"])] = 1
+                tmp = [list(self.state_names).index(pitch_data["pitch_type"])]
+                y.append(tmp)
+        X = np.concat(X, axis=0)
+        y = np.concat(y, axis=0)
+        self.rf_mdl = RandomForestClassifier()
+        self.rf_mdl.fit(X,y)
+        return
+    
+    def score(self, at_bats, features, metric="cross-entropy"):
+        """
+        Scores the model based on the data from at_bats
+        """
+        if metric == "cross-entropy":
+            progress_bar = st.progress(0, text="Scoring Random Forest Model")
+            
+            X, y = [], []
+            for at_bat_idx, at_bat in enumerate(at_bats):
+                progress_bar.progress(at_bat_idx/len(at_bats), text="Scoring Random Forest Model")
+                for pitch_idx, pitch_data in at_bat.iterrows():
+                    X.append(pitch_data[features].values.reshape(1,-1))
+                    # tmp = np.zeros([1, self.n_states])
+                    # tmp[0,list(self.state_names).index(pitch_data["pitch_type"])] = 1
+                    tmp = [list(self.state_names).index(pitch_data["pitch_type"])]
+                    y.append(tmp)
+            X = np.concat(X, axis=0)
+            y_true = np.concat(y, axis=0)
+            y_pred = self.rf_mdl.predict_proba(X)
+            metric_val = np.exp(-log_loss(y_true, y_pred))
+
         return metric_val

@@ -14,7 +14,7 @@ from copy import copy
 from scipy.optimize import linprog
 from scipy.sparse import lil_matrix, hstack, vstack
 from collections import OrderedDict as ordered_dict
-from mdls.pitch_predictor.models import AveragePitchPredictor, MarkovPitchPredictor, MarkovPitchPredictorHandedness
+from mdls.pitch_predictor.models import AveragePitchPredictor, MarkovPitchPredictor, MarkovPitchPredictorHandedness, RFModelPitchPredictor
 
 
 #### FUNCTIONS
@@ -97,6 +97,7 @@ pitch_dict = {"FF":"4-Seam Fastball","SI":"Sinker (2-Seam)","FC":"Cutter",
           "ST":"Sweeper","SV":"Slurve","KN":"Knuckleball","EP":"Eephus","FA":"Other",
           "IN":"Intentional Ball","PO":"Pitchout"}
 metric = "cross-entropy"
+features = ["balls","strikes","fouls","previous_pitch"]
 #### VARIABLES
 
 st.header("Pitch Predictor",divider=True)
@@ -107,6 +108,7 @@ st.markdown("The aim of this project is to build a model that can predict _with 
 st.subheader("Data Preprocessing", divider=True)
 ## build pitch classification model
 pitch_data = load_pitch_data()
+
 
 perc_nan = pitch_data.isna().sum(axis=0)/pitch_data.shape[0]
 st.markdown("First of all, we need to clean of the dataset a bit since there are NaNs in the raw data. Since we are predicting the _pitch type_, I am going to drop any rows that " \
@@ -158,6 +160,10 @@ st.markdown("Now, I need to order the data such that this methodology makes sens
 "I need to ensure that each pitch sequence is proper (pitch 1 -> pitch 2 -> pitch 3 etc.) and not (pitch 1 -> pitch 3).")
 
 print(pitch_data["date"].iloc[0])
+## feature engineering
+pitch_data["previous_pitch"] = pitch_data["pitch_type"].shift(1,fill_value="FF").apply(lambda x: list(poss_states).index(x))
+
+pitch_data.dropna(how="any",axis=0,inplace=True)
 # st.dataframe(pitch_data)
 at_bats = split_data_by_at_bats(pitch_data)
 
@@ -200,26 +206,33 @@ pi_mat = pd.DataFrame(markov_glob_mdl.pi["NA"]["NA"].reshape(1,-1), index=["long
 st.dataframe(pi_mat)
 
 (markov_glob_split_mdl, markov_glob_split_mdl_metric) = fit_and_score_markov_glob_split_pitch_predictor(poss_states, at_bats, metric)
-# st.json(markov_glob_split_mdl.A)
-# P_mat = pd.DataFrame(markov_glob_split_mdl.A["NA"]["RR"], index = poss_states, columns = poss_states)
-# st.dataframe(P_mat)
-# pi_mat = pd.DataFrame(markov_glob_split_mdl.pi["NA"]["RR"].reshape(1,-1), index=["longterm_prob."], columns = poss_states)
-# st.dataframe(pi_mat)
+rf_mdl = RFModelPitchPredictor(poss_states)
+rf_mdl.fit(at_bats[:int(len(at_bats)/2)], features)
+rf_mdl_metric = rf_mdl.score(at_bats[int(len(at_bats)/2):], features)
+# print(rf_metric)
+
+
+# # st.json(markov_glob_split_mdl.A)
+# # P_mat = pd.DataFrame(markov_glob_split_mdl.A["NA"]["RR"], index = poss_states, columns = poss_states)
+# # st.dataframe(P_mat)
+# # pi_mat = pd.DataFrame(markov_glob_split_mdl.pi["NA"]["RR"].reshape(1,-1), index=["longterm_prob."], columns = poss_states)
+# # st.dataframe(pi_mat)
 st.markdown(f"For the model that predicts just the average pitch, the average probability of being correct is {100 * avg_glob_mdl_metric:0.2f}% " \
             f"while the Markov Chain model has an average probability of being correct of {100 * markov_glob_mdl_metric:0.2f}% and the Markov " \
             f"Chain considering split differences has an average probability of being correct of {100 * markov_glob_split_mdl_metric:0.2f}%.")
-# print(len(at_bats))
-# (A, pi) = build_markov_chain_model(at_bats, poss_states)
-# print(A)
-# print(pi)
+st.markdown(f"The Random Forest model has an average probability of being correct of {100 * rf_mdl_metric:0.2f}%")
+# # print(len(at_bats))
+# # (A, pi) = build_markov_chain_model(at_bats, poss_states)
+# # print(A)
+# # print(pi)
 
-# # curr_state = pi
-# last_pitch_thrown = "CH"
-# curr_state = np.zeros((1,len(poss_states)));curr_state[0,list(poss_states).index(last_pitch_thrown)] = 1
-# next_state_pred_dist = curr_state @ A
-# print(next_state_pred_dist)
-# next_state_pred_max = np.argmax(next_state_pred_dist)
-# print(f"Last pitch thrown: {last_pitch_thrown} Next predicted state is {poss_states[next_state_pred_max]} ({100 * next_state_pred_dist[0,next_state_pred_max]:0.2f}%) vs average {poss_states[np.argmax(pi)]} ({100 * np.max(pi):0.2f}%)")
+# # # curr_state = pi
+# # last_pitch_thrown = "CH"
+# # curr_state = np.zeros((1,len(poss_states)));curr_state[0,list(poss_states).index(last_pitch_thrown)] = 1
+# # next_state_pred_dist = curr_state @ A
+# # print(next_state_pred_dist)
+# # next_state_pred_max = np.argmax(next_state_pred_dist)
+# # print(f"Last pitch thrown: {last_pitch_thrown} Next predicted state is {poss_states[next_state_pred_max]} ({100 * next_state_pred_dist[0,next_state_pred_max]:0.2f}%) vs average {poss_states[np.argmax(pi)]} ({100 * np.max(pi):0.2f}%)")
 
 
 
