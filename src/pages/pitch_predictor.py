@@ -14,12 +14,12 @@ from copy import copy
 from scipy.optimize import linprog
 from scipy.sparse import lil_matrix, hstack, vstack
 from collections import OrderedDict as ordered_dict
-from mdls.pitch_predictor.models import AveragePitchPredictor, MarkovPitchPredictor, MarkovPitchPredictorHandedness, RFModelPitchPredictor
+from mdls.pitch_predictor.models import AveragePitchPredictor, MarkovPitchPredictor, RFModelPitchPredictor
 
 
 #### FUNCTIONS
 def load_pitch_data():
-    pitch_data = pd.read_csv("./src/data/Swish_Baseball_project/MLB/pitches.csv")#, nrows=50000
+    pitch_data = pd.read_csv("./src/data/Swish_Baseball_project/MLB/pitches.csv")#, nrows=5000
     print(pitch_data.head())
     return pitch_data
 
@@ -68,9 +68,7 @@ def build_markov_chain_model(at_bats, poss_states):
     return(A, pi.reshape(1,-1))
 
 def fit_and_score_avg_pitch_predictor(poss_states, at_bats, metric):
-    avg_glob_mdl = AveragePitchPredictor(poss_states)
-    avg_glob_mdl.fit(at_bats[:int(len(at_bats)/2)])
-    avg_glob_mdl_metric = avg_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric)
+    
     return (avg_glob_mdl, avg_glob_mdl_metric)
 
 def fit_and_score_markov_glob_pitch_predictor(poss_states, at_bats, metric):
@@ -79,11 +77,6 @@ def fit_and_score_markov_glob_pitch_predictor(poss_states, at_bats, metric):
     markov_glob_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric)
     return (markov_glob_mdl, markov_glob_mdl_metric)
 
-def fit_and_score_markov_glob_split_pitch_predictor(poss_states, at_bats, metric):
-    markov_glob_split_mdl = MarkovPitchPredictorHandedness(poss_states)
-    markov_glob_split_mdl.fit(at_bats[:int(len(at_bats)/2)])
-    markov_glob_split_mdl_metric = markov_glob_split_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric)
-    return (markov_glob_split_mdl, markov_glob_split_mdl_metric)
 
 #### FUNCTIONS
 
@@ -97,12 +90,13 @@ pitch_dict = {"FF":"4-Seam Fastball","SI":"Sinker (2-Seam)","FC":"Cutter",
           "ST":"Sweeper","SV":"Slurve","KN":"Knuckleball","EP":"Eephus","FA":"Other",
           "IN":"Intentional Ball","PO":"Pitchout"}
 metric = "cross-entropy"
-features = ["balls","strikes","fouls","previous_pitch"]
+features = ["balls","strikes","fouls","previous_pitch","previous_previous_pitch"]#
 #### VARIABLES
 
-st.header("Pitch Predictor",divider=True)
-st.sidebar.markdown("# Pitch Predictor")
+st.header("Swish Pitch Predictor",divider=True)
+st.sidebar.markdown("# Swish Pitch Predictor")
 st.subheader("Problem Overview")
+
 st.markdown("The aim of this project is to build a model that can predict _with sufficient accuracy_ what the next pitch will be from a particular pitcher. As per usual, " \
 "we will start with as simple a model possible and slowly make it more complex in order to improve predictive capabilities.")
 st.subheader("Data Preprocessing", divider=True)
@@ -162,6 +156,7 @@ st.markdown("Now, I need to order the data such that this methodology makes sens
 print(pitch_data["date"].iloc[0])
 ## feature engineering
 pitch_data["previous_pitch"] = pitch_data["pitch_type"].shift(1,fill_value="FF").apply(lambda x: list(poss_states).index(x))
+pitch_data["previous_previous_pitch"] = pitch_data["pitch_type"].shift(2,fill_value="FF").apply(lambda x: list(poss_states).index(x))
 
 pitch_data.dropna(how="any",axis=0,inplace=True)
 # st.dataframe(pitch_data)
@@ -179,61 +174,52 @@ st.latex(rf"""
 """)
 st.markdown("Then, we can compare the prediction and the true outcome with the cross-entropy metric [https://en.wikipedia.org/wiki/Cross-entropy].")
 
-st.subheader("Simplest Baseline Model", divider=True)
+st.subheader("Baseline Model", divider=True)
 st.markdown("As a baseline, one simplistic method for predicting what the next pitch will be is to predict the average distribution of pitches. This model will " \
 "do exactly that. For each pitch, it will assign the average probability of throwing a fastball etc. in all scenarios. To 'train' this model, we will take the trainining " \
 "data and calculate the average probability each particular pitch was thrown. ")
 
-st.subheader("Simplest Markov Model", divider=True)
+st.subheader("Markov Models", divider=True)
 st.markdown("For this model, we will use a discrete-time Markov Chain to model the process of selecting the next pitch. The intuition behind this Markov Chain is that the next " \
 "selected pitch only depends on the last thrown pitch. This should capture the _setup_ pitches in which a pitcher will setup a curveball by throwing a fastball first, for example.")
 
 st.table(pitch_dict)
 st.latex("x_k \\in S = \\text{all possible pitches from pitcher} = \\set{FF, SI, FC, \\dots}\\newline x_{k+1} = A x_{k}")
-st.markdown("$A$ is the state transition matrix where $a_{i,j}$ is the probability of transitioning to state $i$ given one is in state $j$.")
+st.markdown("$A$ is the state transition matrix where $a_{i,j}$ is the probability of transitioning to state $j$ given one is in state $i$ (A is a right or row stochastic matrix).")
 st.latex("a_{i,j} = P(x_i | x_j) \\forall x_i, x_j \\in S")
-st.markdown("The Markov Chain also must have an initial distribution, $\\pi_0$, on the probability of starting the Markov chain in each state. This initial distribution will " \
-"be calculated as the average probability of a pitch over all time.")
+st.markdown("The Markov Chain also must have an initial distribution, $\\vec{\\pi}_0$, on the probability of starting the Markov chain in each state. This initial distribution will " \
+"be identified from the below formulation following [Modeling and Analysis of Stochastic Systems, Kulkarni].")
+st.latex(rf"""
+         \vec{{\pi}}_0 = \vec{{\pi}}_0 A
+         """)
 st.markdown("This model is termed the _simplest_ model because we will use all available data to create a global, or average, pitcher. This ignores effects from splits (LHP vs LHH, etc.), " \
-"counts (0-0, 3-2, etc.), or other factors.")
+"counts (0-0, 3-2, etc.), or other factors. We compare adding more information into the model by including split information into the global model, and then pitcher specific information, and " \
+"finally pitcher specific split information.")
+st.subheader("Random Forest Model", divider=True)
+st.markdown("Additionally, we utilize a random forest model that is fed the following features: balls, strikes, fouls, last pitch, 2nd to last pitch. The model performs a grid search to identify " \
+"the salient input features and the set of hyperparameters in the Random Forest model like the number of trees and the max depth of each tree.")
+
+# average pitch model
+avg_glob_mdl = AveragePitchPredictor(poss_states)
+avg_glob_mdl.fit(at_bats[:int(len(at_bats)/2)])
+avg_glob_mdl_metric = avg_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric)
+# markov global pitch modell
+markov_glob_mdl = MarkovPitchPredictor(poss_states)
+markov_glob_mdl.fit(at_bats[:int(len(at_bats)/2)])
+markov_glob_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric, info = [""])
+markov_glob_split_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric, info = ["split"])
+markov_pitcher_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric, info = ["pitcher"])
+markov_pitcher_split_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric, info = ["pitcher","split"])
 
 
-(avg_glob_mdl, avg_glob_mdl_metric) = fit_and_score_avg_pitch_predictor(poss_states, at_bats, metric)
-(markov_glob_mdl, markov_glob_mdl_metric) = fit_and_score_markov_glob_pitch_predictor(poss_states, at_bats, metric)
-P_mat = pd.DataFrame(markov_glob_mdl.A["NA"]["NA"], index = poss_states, columns = poss_states)
-st.dataframe(P_mat)
-pi_mat = pd.DataFrame(markov_glob_mdl.pi["NA"]["NA"].reshape(1,-1), index=["longterm_prob."], columns = poss_states)
-st.dataframe(pi_mat)
-
-(markov_glob_split_mdl, markov_glob_split_mdl_metric) = fit_and_score_markov_glob_split_pitch_predictor(poss_states, at_bats, metric)
 rf_mdl = RFModelPitchPredictor(poss_states)
 rf_mdl.fit(at_bats[:int(len(at_bats)/2)], features)
 rf_mdl_metric = rf_mdl.score(at_bats[int(len(at_bats)/2):], features)
-# print(rf_metric)
+results = pd.DataFrame([avg_glob_mdl_metric, markov_glob_mdl_metric, markov_glob_split_mdl_metric, markov_pitcher_mdl_metric, markov_pitcher_split_mdl_metric, rf_mdl_metric], index = ["Simplest Baseline Model","Global Markov Model","Global Split Markov Model", "Pitcher Markov Model", "Pitcher Split Markov Model", "Global Random Forest Model"], columns = ["exp(-cross-entropy) [%]"])
+st.dataframe(results)
 
-
-# # st.json(markov_glob_split_mdl.A)
-# # P_mat = pd.DataFrame(markov_glob_split_mdl.A["NA"]["RR"], index = poss_states, columns = poss_states)
-# # st.dataframe(P_mat)
-# # pi_mat = pd.DataFrame(markov_glob_split_mdl.pi["NA"]["RR"].reshape(1,-1), index=["longterm_prob."], columns = poss_states)
-# # st.dataframe(pi_mat)
-st.markdown(f"For the model that predicts just the average pitch, the average probability of being correct is {100 * avg_glob_mdl_metric:0.2f}% " \
-            f"while the Markov Chain model has an average probability of being correct of {100 * markov_glob_mdl_metric:0.2f}% and the Markov " \
-            f"Chain considering split differences has an average probability of being correct of {100 * markov_glob_split_mdl_metric:0.2f}%.")
-st.markdown(f"The Random Forest model has an average probability of being correct of {100 * rf_mdl_metric:0.2f}%")
-# # print(len(at_bats))
-# # (A, pi) = build_markov_chain_model(at_bats, poss_states)
-# # print(A)
-# # print(pi)
-
-# # # curr_state = pi
-# # last_pitch_thrown = "CH"
-# # curr_state = np.zeros((1,len(poss_states)));curr_state[0,list(poss_states).index(last_pitch_thrown)] = 1
-# # next_state_pred_dist = curr_state @ A
-# # print(next_state_pred_dist)
-# # next_state_pred_max = np.argmax(next_state_pred_dist)
-# # print(f"Last pitch thrown: {last_pitch_thrown} Next predicted state is {poss_states[next_state_pred_max]} ({100 * next_state_pred_dist[0,next_state_pred_max]:0.2f}%) vs average {poss_states[np.argmax(pi)]} ({100 * np.max(pi):0.2f}%)")
-
-
-
-
+st.markdown("The metric ($e^{\\text{-cross-entropy}}$) can be seen as the average probability of predicting the correct pitch in an at-bat. The results show a large improvement from the baseline model. " \
+"As with almost all models, the more complex the model is, the more data-hungry the model becomes. This can be seen in the final Markov Model in which it is likely that there was not enough data for each " \
+"pitcher to have a proper representation of how they each pitch to right- and left-handed hitters. This can be mitigated using a conjugate prior for each pitcher. The conjugate prior would follow the heirarchy: " \
+"Global Pitcher Model -> Pitcher Model -> Pitcher Split Model. The conjugate prior essentially assumes that (without any data) the distribution of pitches thrown by a new pitch will be similar to the global model, etc. " \
+"I plan to come back and properly create these conjugate priors for better modeling of the pitch predictions.")
