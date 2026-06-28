@@ -1,7 +1,5 @@
 # local
-src/data/Swish_Football_project
-src/data/Swish_Soccer_project
-src/data/Swish_Baseball_project
+src/data
 .streamlit/
 
 # Byte-compiled / optimized / DLL files
