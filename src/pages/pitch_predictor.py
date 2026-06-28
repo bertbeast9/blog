@@ -142,7 +142,7 @@ pitch_data["states"] = pitch_data["pitch_type"]
 pitch_data = pitch_data[pitch_data["states"].apply(lambda x: False if x in ["AB", "EP", "FA", "FO", "PO", "SC", "UN", "IN"] else True)]
 pitch_hist = plt.figure()
 poss_states, counts = np.unique(pitch_data["states"], return_counts=True)
-percents = counts / np.sum(counts)
+percents = 100 * counts / np.sum(counts)
 plt.bar(poss_states, percents)
 plt.ylabel("pitch percent [%]")
 plt.xlabel("pitch acronym")
@@ -158,7 +158,6 @@ print(pitch_data["date"].iloc[0])
 pitch_data["previous_pitch"] = pitch_data["pitch_type"].shift(1,fill_value="FF").apply(lambda x: list(poss_states).index(x))
 pitch_data["previous_previous_pitch"] = pitch_data["pitch_type"].shift(2,fill_value="FF").apply(lambda x: list(poss_states).index(x))
 
-pitch_data.dropna(how="any",axis=0,inplace=True)
 # st.dataframe(pitch_data)
 at_bats = split_data_by_at_bats(pitch_data)
 
@@ -177,7 +176,7 @@ st.markdown("Then, we can compare the prediction and the true outcome with the c
 st.subheader("Baseline Model", divider=True)
 st.markdown("As a baseline, one simplistic method for predicting what the next pitch will be is to predict the average distribution of pitches. This model will " \
 "do exactly that. For each pitch, it will assign the average probability of throwing a fastball etc. in all scenarios. To 'train' this model, we will take the trainining " \
-"data and calculate the average probability each particular pitch was thrown. ")
+"data and calculate the average probability each particular pitch was thrown.")
 
 st.subheader("Markov Models", divider=True)
 st.markdown("For this model, we will use a discrete-time Markov Chain to model the process of selecting the next pitch. The intuition behind this Markov Chain is that the next " \
@@ -203,7 +202,7 @@ st.markdown("Additionally, we utilize a random forest model that is fed the foll
 avg_glob_mdl = AveragePitchPredictor(poss_states)
 avg_glob_mdl.fit(at_bats[:int(len(at_bats)/2)])
 avg_glob_mdl_metric = avg_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric)
-# markov global pitch modell
+# markov global pitch model
 markov_glob_mdl = MarkovPitchPredictor(poss_states)
 markov_glob_mdl.fit(at_bats[:int(len(at_bats)/2)])
 markov_glob_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric, info = [""])
@@ -211,7 +210,7 @@ markov_glob_split_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2)
 markov_pitcher_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric, info = ["pitcher"])
 markov_pitcher_split_mdl_metric = markov_glob_mdl.score(at_bats[int(len(at_bats)/2):], metric = metric, info = ["pitcher","split"])
 
-
+# random forest pitch model
 rf_mdl = RFModelPitchPredictor(poss_states)
 rf_mdl.fit(at_bats[:int(len(at_bats)/2)], features)
 rf_mdl_metric = rf_mdl.score(at_bats[int(len(at_bats)/2):], features)

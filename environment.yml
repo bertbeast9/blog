@@ -1,0 +1,12 @@
+name: swish_baseball
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - IPython
+  - matplotlib
+  - ipykernel
