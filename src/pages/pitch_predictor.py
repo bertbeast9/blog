@@ -17,11 +17,12 @@ from collections import OrderedDict as ordered_dict
 from mdls.pitch_predictor.models import AveragePitchPredictor, MarkovPitchPredictor, RFModelPitchPredictor
 from st_files_connection import FilesConnection
 
+conn = st.connection('gcs', type=FilesConnection)
 #### FUNCTIONS
+@st.cache_data
 def load_pitch_data():
-    conn = st.connection('gcs', type=FilesConnection)
-    # pitch_data = conn.read("blog-data-storage/Swish_Baseball_project/pitches.csv", input_format="csv")
-    pitch_data = conn.read("blog-data-storage/myfile.csv", input_format="csv")
+    pitch_data = conn.read("blog-data-storage/Swish_Baseball_project/pitches.csv", input_format="csv")#, chunksize=1000
+    # pitch_data = conn.read("blog-data-storage/myfile.csv", input_format="csv")
     print(pitch_data.head())
     return pitch_data
 
