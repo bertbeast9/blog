@@ -22,10 +22,6 @@ conn = st.connection('gcs', type=FilesConnection)
 #### FUNCTIONS
 @st.cache_data
 def load_pitch_data():
-    pitch_data = conn.read("blog-data-storage/Swish_Baseball_project/pitches.csv", input_format="csv")#, chunksize=1000
-    # pitch_data = conn.read("blog-data-storage/myfile.csv", input_format="csv")
-    print("hey")
-    print(pitch_data.head())
     with conn.open("blog-data-storage/Swish_Baseball_project/pitches.csv", "r") as f:
         return pd.read_csv(f, nrows=10000)
 
