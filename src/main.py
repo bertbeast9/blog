@@ -1,6 +1,15 @@
 import streamlit as st
+from st_files_connection import FilesConnection
 
 if __name__ == "__main__":
+    conn = st.connection('gcs', type=FilesConnection)
+    df = conn.read("blog-data-storage/myfile.csv", input_format="csv", ttl=600)
+
+    # Print results.
+    
+    for row in df.itertuples():
+        st.write(f"{row.Owner} has a :{row.Pet}:")
+
     # Define the pages
     home_page = st.Page("./pages/home_page.py", title="Home Page", icon="🏠")
     about_me = st.Page("./pages/about_me.py", title="About Me", icon="👨")

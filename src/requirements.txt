@@ -2,3 +2,5 @@ scipy
 matplotlib
 bs4
 scikit-learn
+gcsfs
+st-files-connection
