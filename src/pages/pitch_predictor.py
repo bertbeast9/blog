@@ -20,7 +20,7 @@ from st_files_connection import FilesConnection
 #### FUNCTIONS
 def load_pitch_data():
     conn = st.connection('gcs', type=FilesConnection)
-    pitch_data = conn.read("blog-data-storage/Swish_Baseball_project/pitches.csv", input_format="csv", ttl=600)
+    pitch_data = conn.read("blog-data-storage/Swish_Baseball_project/pitches.csv", input_format="csv")
     print(pitch_data.head())
     return pitch_data
 
