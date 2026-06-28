@@ -1,14 +1,14 @@
 import streamlit as st
-from st_files_connection import FilesConnection
+# from st_files_connection import FilesConnection
 
 if __name__ == "__main__":
-    conn = st.connection('gcs', type=FilesConnection)
-    df = conn.read("blog-data-storage/myfile.csv", input_format="csv", ttl=600)
+    # conn = st.connection('gcs', type=FilesConnection)
+    # df = conn.read("blog-data-storage/myfile.csv", input_format="csv", ttl=600)
 
-    # Print results.
+    # # Print results.
     
-    for row in df.itertuples():
-        st.write(f"{row.Owner} has a :{row.Pet}:")
+    # for row in df.itertuples():
+    #     st.write(f"{row.Owner} has a :{row.Pet}:")
 
     # Define the pages
     home_page = st.Page("./pages/home_page.py", title="Home Page", icon="🏠")
@@ -18,7 +18,7 @@ if __name__ == "__main__":
     pitcher_biomech_velo = st.Page("./pages/pitcher_biomech_velo.py",title="Pitcher Biomechanics & Velocity Project", icon="⚾")
     pitch_predictor = st.Page("./pages/pitch_predictor.py", title="Pitch Predictor", icon="⚾")
     # Set up navigation
-    pg = st.navigation([home_page, pitch_solver, live_baseball_game_solver_average, pitcher_biomech_velo, pitch_predictor, about_me])
+    pg = st.navigation([home_page, pitch_predictor])#, pitch_solver, live_baseball_game_solver_average, pitcher_biomech_velo, pitch_predictor, about_me])
 
     # Run the selected page
     pg.run()

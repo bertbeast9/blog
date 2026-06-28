@@ -15,11 +15,12 @@ from scipy.optimize import linprog
 from scipy.sparse import lil_matrix, hstack, vstack
 from collections import OrderedDict as ordered_dict
 from mdls.pitch_predictor.models import AveragePitchPredictor, MarkovPitchPredictor, RFModelPitchPredictor
-
+from st_files_connection import FilesConnection
 
 #### FUNCTIONS
 def load_pitch_data():
-    pitch_data = pd.read_csv("./src/data/Swish_Baseball_project/MLB/pitches.csv")#, nrows=5000
+    conn = st.connection('gcs', type=FilesConnection)
+    pitch_data = conn.read("blog-data-storage/Swish_Baseball_project/pitches.csv", input_format="csv", ttl=600)
     print(pitch_data.head())
     return pitch_data
 
