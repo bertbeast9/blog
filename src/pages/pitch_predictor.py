@@ -18,14 +18,16 @@ from mdls.pitch_predictor.models import AveragePitchPredictor, MarkovPitchPredic
 from st_files_connection import FilesConnection
 
 conn = st.connection('gcs', type=FilesConnection)
+# conn = st.connection('gcs', type="files")
 #### FUNCTIONS
 @st.cache_data
 def load_pitch_data():
-    pitch_data = conn.read("blog-data-storage/Swish_Baseball_project/pitches_small.csv", input_format="csv")#, chunksize=1000
+    pitch_data = conn.read("blog-data-storage/Swish_Baseball_project/pitches.csv", input_format="csv")#, chunksize=1000
     # pitch_data = conn.read("blog-data-storage/myfile.csv", input_format="csv")
     print("hey")
     print(pitch_data.head())
-    return pitch_data
+    with conn.open("blog-data-storage/Swish_Baseball_project/pitches.csv", "r") as f:
+        return pd.read_csv(f, nrows=10000)
 
 def order_pitches_global(df):
     df.sort_values(["date", "game_pk","at_bat_num","pcount_at_bat"], inplace=True)
