@@ -20,10 +20,10 @@ from st_files_connection import FilesConnection
 conn = st.connection('gcs', type=FilesConnection)
 # conn = st.connection('gcs', type="files")
 #### FUNCTIONS
-@st.cache_data
+@st.cache_data(ttl=600)
 def load_pitch_data():
     with conn.open("blog-data-storage/Swish_Baseball_project/pitches.csv", "r") as f:
-        return pd.read_csv(f, nrows=100000)
+        return pd.read_csv(f)
 
 def order_pitches_global(df):
     df.sort_values(["date", "game_pk","at_bat_num","pcount_at_bat"], inplace=True)
